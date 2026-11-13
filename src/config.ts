@@ -47,6 +47,10 @@ export interface Config {
     autoplay: string;
     queue: string;
   };
+  owner: {
+    id: string;
+    saweriaUrl: string;
+  };
   token: string;
   clientId: string;
 }
@@ -71,6 +75,10 @@ export const config: Config = {
     error: rawConfig.embedColors?.error || "#ED4245",
     autoplay: rawConfig.embedColors?.autoplay || "#EB459E",
     queue: rawConfig.embedColors?.queue || "#9B59B6"
+  },
+  owner: {
+    id: process.env.OWNER_ID || rawConfig.owner?.id || "1157912761184026764",
+    saweriaUrl: process.env.SAWERIA_URL || rawConfig.owner?.saweriaUrl || "https://saweria.co/diaww"
   },
   token: process.env.DISCORD_TOKEN || "",
   clientId: process.env.CLIENT_ID || ""

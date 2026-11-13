@@ -62,6 +62,8 @@ const helpCommand: Command = {
           name: t(lang, "help.general_commands"),
           value:
             `• \`/language [lang]\` | \`${p}lang [lang]\` — Change server bot language.\n` +
+            `• \`/donate\` | \`${p}donate\` — Support & donate via Saweria.\n` +
+            `• \`/support <message>\` | \`${p}report <message>\` — Send bug report / feedback directly to Owner.\n` +
             `• \`/ping\` | \`${p}ping\` — Check WebSocket, SQLite, RAM, & Lavalink latency.\n` +
             `• \`/prefix <new>\` | \`${p}prefix <new>\` — Change server prefix.\n` +
             `• \`/help\` | \`${p}help\` — Open this manual guide.`
@@ -119,6 +121,8 @@ const helpCommand: Command = {
           name: t(lang, "help.general_commands"),
           value:
             `• \`/language [lang]\` | \`${p}lang [lang]\` — Change server bot language.\n` +
+            `• \`/donate\` | \`${p}donate\` — Support & donate via Saweria.\n` +
+            `• \`/support <message>\` | \`${p}report <message>\` — Send bug report / feedback directly to Owner.\n` +
             `• \`/ping\` | \`${p}ping\` — Check WebSocket, SQLite, RAM, & Lavalink latency.\n` +
             `• \`/prefix <new>\` | \`${p}prefix <new>\` — Change server prefix.\n` +
             `• \`/help\` | \`${p}help\` — Open this manual guide.`

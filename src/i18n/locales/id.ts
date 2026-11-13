@@ -145,6 +145,18 @@ const id: TranslationSchema = {
     available: "Bahasa yang tersedia:\n{list}\n\nUntuk mengubah bahasa, gunakan `/language <kode_atau_nama>` atau `w!lang <kode_atau_nama>`.",
     invalid: "Bahasa `{input}` tidak valid!\nBahasa yang didukung: {supported}"
   },
+  donate: {
+    title: "☕ Donasi & Dukung DIAWW MUSIC",
+    description: "Terima kasih banyak telah menggunakan **DIAWW MUSIC**!\nJika kamu menikmati audio lossless dan fitur bot kami, kamu dapat mendukung biaya hosting & server kami melalui Saweria:\n\n🔗 **Link Saweria:** [{url}]({url})\n\nSetiap dukungan sangat berarti bagi kelangsungan bot ini! ❤️",
+    button_label: "Donasi via Saweria"
+  },
+  support: {
+    title: "📩 Kirim Aduan / Support ke Developer",
+    description: "Aduan, laporan bug, atau saranmu telah diteruskan langsung ke DM personal Owner bot! Terima kasih telah membantu kami.",
+    success_sent: "Laporanmu berhasil dikirimkan langsung ke developer bot! Kamu akan menerima balasan langsung ke DM jika diperlukan.",
+    usage_warning: "Harap tuliskan pesan aduan atau saranmu.\nContoh: `w!report Lagu Spotify DJ slow tidak keluar suara`",
+    empty_message: "Pesan aduan tidak boleh kosong!"
+  },
   help: {
     title: "📖 Buku Panduan • DIAWW MUSIC",
     description: "**DIAWW MUSIC** adalah Dedicated High-Fidelity Discord Music Bot dengan dukungan **9+ Platform Musik**, sistem pencarian cerdas bertingkat, dan algoritma Autoplay Spotify Radio.\n\n🔹 **Prefix Server Ini:** `{prefix}` *(Bebas huruf kapital/kecil: `{prefix}play`, `{prefix_upper}play`)*\n🔹 **Bahasa:** `{lang_flag} {lang_name}` (`/language`)\n🔹 **Slash Commands:** Ketik `/` untuk memilih menu interaktif Discord.",

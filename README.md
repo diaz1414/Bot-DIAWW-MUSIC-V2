@@ -247,9 +247,35 @@ Semua perintah prefix di bawah ini bersifat **Case-Insensitive** (`w!`, `W!`, `d
 | Slash Command | Prefix Command | Aliases | Keterangan |
 |---|---|---|---|
 | `/language [lang]` | `w!language [lang]` | `w!lang`, `w!setlang`, `w!bahasa` | Melihat atau mengubah bahasa bot per-server (Default: English, Indonesia, Español, 日本語, dll). |
+| `/donate` | `w!donate` | `w!saweria`, `w!donasi` | Dukung dan donasi untuk biaya hosting & server DIAWW MUSIC via Saweria. |
+| `/support <pesan>` | `w!support <pesan>` | `w!report`, `w!aduan` | Kirim aduan kendala/bug/saran yang otomatis diteruskan langsung ke DM Owner. |
 | `/ping` | `w!ping` | `w!latency` | Cek latensi Discord WebSocket, Lavalink v4, SQLite DB, dan pemakaian RAM. |
 | `/prefix <new_prefix>` | `w!prefix <baru>` | `w!setprefix` | Mengubah custom prefix bot di server (Memerlukan izin Manage Server). |
 | `/help` | `w!help` | `w!h`, `w!commands`, `w!menu` | Menampilkan buku panduan interaktif seluruh fitur DIAWW MUSIC. |
+
+---
+
+## 👑 PANDUAN OWNER CONTROL PANEL (DM PERSONAL KHUSUS OWNER)
+
+Bot ini memiliki **Private Control Panel** yang beroperasi eksklusif melalui **Chat Langsung / Direct Message (DM)** antara bot dan Owner (User ID: `1157912761184026764`):
+
+### Cara Mengakses:
+Cukup kirim pesan langsung (DM) ke akun bot Discord Anda dengan mengetik `panel`, `menu`, atau `help`. Bot akan langsung membalas dengan dashboard interaktif beserta tombol navigasi:
+
+### Daftar Perintah Owner di DM:
+1. **`menu` / `panel` / `help`**: Menampilkan dashboard kontrol interaktif dengan tombol status, daftar server, dan restart.
+2. **`stats` / `health` / `system`**: Menampilkan status kesehatan sistem lengkap:
+   - Penggunaan RAM (Heap, RSS, OS Total & Free RAM)
+   - Uptime Bot & Runtime Host (Bun / Node.js)
+   - Status & beban CPU tiap node Lavalink v4
+   - Jumlah pemutar musik aktif & total server
+   - Status koneksi database SQLite WAL mode
+3. **`servers` / `guilds`**: Menampilkan seluruh server Discord yang menggunakan bot Anda, lengkap dengan ID Server, jumlah anggota warga, dan status pemutaran musik saat itu.
+4. **`leave <guild_id>`**: Memerintahkan bot keluar secara paksa dari server tertentu jika diperlukan.
+5. **`reply <user_id> <pesan>`**: Membalas laporan/aduan pengguna yang masuk ke DM Anda. Bot akan otomatis mengirimkan pesan balasan resmi langsung ke DM pengguna tersebut.
+6. **`broadcast <pesan>`**: Mengirimkan pengumuman resmi ke channel teks utama di seluruh server Discord yang mengundang bot.
+7. **`restart`**: Melakukan restart bot proses secara graceful (aman untuk hosting Pterodactyl/PM2).
+8. **`eval <code>`**: Menjalankan evaluasi kode JavaScript/TypeScript untuk keperluan pemeliharaan atau debugging teknis.
 
 ---
 

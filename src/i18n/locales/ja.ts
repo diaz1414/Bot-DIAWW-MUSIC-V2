@@ -145,6 +145,18 @@ const ja: TranslationSchema = {
     available: "利用可能な言語:\n{list}\n\n言語を変更するには `/language <コードまたは名前>` または `w!lang <コードまたは名前>` を実行してください。",
     invalid: "無効な言語 `{input}` です！\n対応言語: {supported}"
   },
+  donate: {
+    title: "☕ DIAWW MUSIC への寄付・ご支援",
+    description: "**DIAWW MUSIC**をご利用いただきありがとうございます！\n高品質なオーディオサーバーの維持費用の支援はこちらから可能です：\n\n🔗 **Saweriaリンク:** [{url}]({url})\n\n皆様の温かいご支援に心より感謝申し上げます！❤️",
+    button_label: "Saweriaで寄付する"
+  },
+  support: {
+    title: "📩 開発者への不具合報告・サポート",
+    description: "ご報告いただいた内容はボット開発者の個人DMへ直接転送されました！ご協力ありがとうございます。",
+    success_sent: "報告が開発者へ正常に送信されました！必要に応じてDMで回答があります。",
+    usage_warning: "報告内容を入力してください。\n例: `w!report 楽曲の再生でエラーが発生しました`",
+    empty_message: "報告内容は空にできません！"
+  },
   help: {
     title: "📖 操作マニュアル • DIAWW MUSIC",
     description: "**DIAWW MUSIC** は、**9+の音楽プラットフォーム**に対応したハイレゾDiscord音楽ボットです。\n\n🔹 **サーバープレフィックス:** `{prefix}`\n🔹 **言語:** `{lang_flag} {lang_name}` (`/language`)\n🔹 **スラッシュコマンド:** `/` を入力してコマンドを選択できます。",

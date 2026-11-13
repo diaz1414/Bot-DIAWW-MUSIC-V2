@@ -3,9 +3,18 @@
     "name": "DIAWW MUSIC",
     "defaultPrefix": "w!",
     "status": [
-      { "name": "w!help | DIAWW MUSIC", "type": 2 },
-      { "name": "/play | High-Fidelity Audio", "type": 2 },
-      { "name": "9+ Sumber Musik & Radio", "type": 0 }
+      {
+        "name": "w!help | DIAWW MUSIC",
+        "type": 2
+      },
+      {
+        "name": "/play | High-Fidelity Audio",
+        "type": 2
+      },
+      {
+        "name": "9+ Sumber Musik & Radio",
+        "type": 0
+      }
     ],
     "statusInterval": 30000
   },
@@ -35,6 +44,10 @@
     "defaultVolume": 80,
     "maxVolume": 150,
     "disconnectTimeout": 60000
+  },
+  "owner": {
+    "id": "1157912761184026764",
+    "saweriaUrl": "https://saweria.co/diaw14"
   },
   "embedColors": {
     "primary": "#5865F2",

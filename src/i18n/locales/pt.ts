@@ -145,6 +145,18 @@ const pt: TranslationSchema = {
     available: "Idiomas disponíveis:\n{list}\n\nPara alterar o idioma, use `/language <código_ou_nome>` ou `w!lang <código_ou_nome>`.",
     invalid: "Idioma `{input}` inválido!\nIdiomas suportados: {supported}"
   },
+  donate: {
+    title: "☕ Apoie e Doe para o DIAWW MUSIC",
+    description: "Obrigado por usar o **DIAWW MUSIC**!\nVocê pode apoiar nossos custos de servidor e hospedagem via Saweria:\n\n🔗 **Link Saweria:** [{url}]({url})\n\nCada contribuição significa muito para nós! ❤️",
+    button_label: "Doar via Saweria"
+  },
+  support: {
+    title: "📩 Enviar Relatório / Suporte ao Dono",
+    description: "Seu relatório foi encaminhado diretamente para a mensagem privada do desenvolvedor! Obrigado por ajudar a melhorar o bot.",
+    success_sent: "Seu relatório foi enviado com sucesso ao desenvolvedor do bot!",
+    usage_warning: "Por favor, digite seu relatório ou sugestão.\nExemplo: `w!report Erro ao tocar música`",
+    empty_message: "A mensagem do relatório não pode estar vazia!"
+  },
   help: {
     title: "📖 Manual do Usuário • DIAWW MUSIC",
     description: "**DIAWW MUSIC** é um Bot de Música para Discord de Alta Fidelidade com suporte a **9+ Plataformas**, busca inteligente em camadas e algoritmo Autoplay Spotify Radio.\n\n🔹 **Prefixo do Servidor:** `{prefix}`\n🔹 **Idioma:** `{lang_flag} {lang_name}` (`/language`)\n🔹 **Comandos Slash:** Digite `/` para ver o menu interativo.",

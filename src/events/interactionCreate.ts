@@ -15,6 +15,7 @@ import {
   destroyAndCleanPlayer,
   prepareAutoplayNextTrack
 } from "../modules/musicManager";
+import { handleOwnerButton } from "../modules/ownerManager";
 import { createErrorEmbed, createSuccessEmbed, createWarningEmbed } from "../utils/embeds";
 
 export default async function onInteractionCreate(
@@ -60,6 +61,10 @@ export default async function onInteractionCreate(
 
   // 3. Handle Interactive Button Controls
   if (interaction.isButton()) {
+    if (interaction.customId.startsWith("owner_")) {
+      await handleOwnerButton(client, interaction);
+      return;
+    }
     await handleButtonInteraction(client, interaction);
   }
 }

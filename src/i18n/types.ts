@@ -145,6 +145,18 @@ export interface TranslationSchema {
     available: string;
     invalid: string;
   };
+  donate: {
+    title: string;
+    description: string;
+    button_label: string;
+  };
+  support: {
+    title: string;
+    description: string;
+    success_sent: string;
+    usage_warning: string;
+    empty_message: string;
+  };
   help: {
     title: string;
     description: string;

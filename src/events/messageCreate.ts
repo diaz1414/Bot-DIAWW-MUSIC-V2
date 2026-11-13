@@ -2,7 +2,8 @@ import { Message } from "discord.js";
 import { DiawwBotClient } from "../client";
 import { getGuildLanguage, getGuildSettings } from "../database/schema";
 import { t } from "../i18n";
-import { createErrorEmbed } from "../utils/embeds";
+import { handleOwnerDM, isOwner } from "../modules/ownerManager";
+import { createBaseEmbed, createErrorEmbed } from "../utils/embeds";
 
 function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -12,10 +13,32 @@ export default async function onMessageCreate(
   client: DiawwBotClient,
   message: Message
 ): Promise<void> {
-  // Abaikan pesan dari sesama bot atau pesan di DM (hanya proses pesan guild)
-  if (message.author.bot || !message.guild || !message.guildId) return;
+  // Abaikan pesan dari sesama bot
+  if (message.author.bot) return;
 
-  // Ambil prefix khusus guild dari SQLite (default: w!)
+  // ============================================================================
+  // 1. OWNER CONTROL PANEL VIA PERSONAL CHAT (DIRECT MESSAGE / DM)
+  // ============================================================================
+  if (!message.guild || !message.guildId) {
+    if (isOwner(message.author.id, client)) {
+      await handleOwnerDM(client, message);
+    } else {
+      await message.reply({
+        embeds: [
+          createBaseEmbed(
+            "DIAWW MUSIC Support",
+            "Halo! Untuk mendengarkan musik, gunakan perintah di server Discord Anda.\n" +
+            "Jika ingin mengirim aduan, kendala, atau saran ke developer, gunakan perintah `/support <pesan>` di server Discord."
+          )
+        ]
+      }).catch(() => {});
+    }
+    return;
+  }
+
+  // ============================================================================
+  // 2. GUILD PREFIX COMMANDS (CASE-INSENSITIVE)
+  // ============================================================================
   const guildSettings = getGuildSettings(message.guildId);
   const guildPrefix = guildSettings.prefix || client.config.bot.defaultPrefix || "w!";
 
