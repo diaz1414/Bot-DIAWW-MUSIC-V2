@@ -1,0 +1,732 @@
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  EmbedBuilder,
+  Message,
+  TextChannel,
+  User
+} from "discord.js";
+import {
+  LavalinkManager,
+  Player,
+  SearchResult,
+  Track
+} from "lavalink-client";
+import { DiawwBotClient } from "../client";
+import { config } from "../config";
+import { getGuildLanguage, getGuildSettings } from "../database/schema";
+import { t } from "../i18n";
+import { createBaseEmbed, createInfoEmbed, createWarningEmbed, getBotAvatar } from "../utils/embeds";
+import { createProgressBar, formatDuration } from "../utils/time";
+
+/**
+ * Interface ekstensi untuk track dengan flag autoplay
+ */
+export interface ExtendedTrack extends Track {
+  isAutoplay?: boolean;
+}
+
+/**
+ * Membersihkan judul lagu dari noise seperti [Official Video], (Lyrics), HD, Remastered, dll.
+ */
+export function cleanTrackTitle(title: string): string {
+  if (!title) return "";
+
+  return title
+    .toLowerCase()
+    // Hapus kurung siku, kurung biasa, dan isinya jika memuat kata kunci video/audio
+    .replace(/[\(\[\{][^\)\]\}]*(?:official|video|audio|lyrics|lyric|remastered|remaster|hd|4k|mv|visualizer|clip|full|album|feat|ft|prod)[^\)\]\}]*[\)\]\}]/gi, "")
+    // Hapus sisa-sisa kurung biasa/siku umum
+    .replace(/[\(\[\{].*?[\)\]\}]/g, "")
+    // Hapus kata-kata promosi/tag video
+    .replace(/\b(?:official video|official audio|music video|lyric video|lyrics|remastered|remaster|hd|4k|mv|visualizer|slowed|reverb|sped up|bass boosted|audio)\b/gi, "")
+    // Hapus tanda baca berlebihan
+    .replace(/[|\-_~]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Mendeteksi apakah dua lagu sama atau sangat mirip (menghindari cover/re-upload kembar)
+ */
+export function isSameOrSimilarTrack(trackA: any, trackB: any): boolean {
+  if (!trackA || !trackB) return false;
+
+  const infoA = trackA.info || trackA;
+  const infoB = trackB.info || trackB;
+
+  // Jika identifier atau URI sama
+  if (infoA.identifier && infoB.identifier && infoA.identifier === infoB.identifier) return true;
+  if (infoA.uri && infoB.uri && infoA.uri === infoB.uri) return true;
+
+  const cleanTitleA = cleanTrackTitle(infoA.title || "");
+  const cleanTitleB = cleanTrackTitle(infoB.title || "");
+
+  // Judul bersih persis sama
+  if (cleanTitleA && cleanTitleB && cleanTitleA === cleanTitleB) return true;
+
+  // Cek kemiripan kata (token overlap)
+  const tokensA = cleanTitleA.split(" ").filter((t: string) => t.length > 2);
+  const tokensB = cleanTitleB.split(" ").filter((t: string) => t.length > 2);
+
+  if (tokensA.length > 0 && tokensB.length > 0) {
+    const intersection = tokensA.filter((t: string) => tokensB.includes(t));
+    const similarity = (intersection.length * 2) / (tokensA.length + tokensB.length);
+    if (similarity > 0.75) return true;
+  }
+
+  return false;
+}
+
+/**
+ * Mencatat lagu yang sudah diputar ke dalam riwayat player (maksimal 50 lagu)
+ */
+export function recordPlayedTrack(player: Player, track: Track): void {
+  const history: Array<{ id: string; title: string; author: string }> = player.get("played_history") || [];
+
+  const entry = {
+    id: track.info.identifier,
+    title: cleanTrackTitle(track.info.title),
+    author: (track.info.author || "").toLowerCase()
+  };
+
+  // Cek apakah sudah ada di riwayat
+  const alreadyExists = history.some(
+    (h) => h.id === entry.id || (h.title === entry.title && h.author === entry.author)
+  );
+
+  if (!alreadyExists) {
+    history.push(entry);
+    if (history.length > 50) {
+      history.shift(); // Jaga riwayat maksimal 50 lagu terakhir
+    }
+    player.set("played_history", history);
+  }
+}
+
+/**
+ * Algoritma Cerdas Autoplay (Spotify Radio & YouTube Mix Algorithm):
+ * Mengambil lagu acuan, mencari Spotify Radio & Mix atau YouTube Mix,
+ * dan memilih lagu sejenis yang belum pernah diputar (anti-repeat).
+ */
+export async function prepareAutoplayNextTrack(
+  player: Player,
+  client: DiawwBotClient,
+  referenceTrack: Track
+): Promise<void> {
+  if (player.get("autoplay_fetching")) return;
+  player.set("autoplay_fetching", true);
+
+  try {
+    const rawArtist = referenceTrack.info.author || "";
+    const cleanArtist = rawArtist
+      .replace(/\s*-\s*Topic$/i, "")
+      .replace(/\s*VEVO$/i, "")
+      .replace(/\s*Official$/i, "")
+      .replace(/,\s*.*/, "") // Ambil artis utama pertama
+      .trim();
+
+    if (!cleanArtist) {
+      player.set("autoplay_fetching", false);
+      return;
+    }
+
+    const queries = [
+      `spsearch:${cleanArtist} Radio`,
+      `spsearch:${cleanArtist} Mix`,
+      `ytsearch:${cleanArtist} Mix playlist`,
+      `spsearch:${cleanArtist}`
+    ];
+
+    const history: Array<{ id: string; title: string; author: string }> = player.get("played_history") || [];
+    const currentQueue = player.queue.tracks;
+
+    let candidateTrack: Track | null = null;
+
+    for (const q of queries) {
+      try {
+        const res = await player.search(q, { id: client.user?.id || "DIAWW_AUTOPLAY", username: "Autoplay Radio" });
+        if (!res || !res.tracks || res.tracks.length === 0) continue;
+
+        const validCandidates = res.tracks.filter((candidate: any) => {
+          // Abaikan lagu acuan saat ini
+          if (isSameOrSimilarTrack(candidate, referenceTrack)) return false;
+
+          // Abaikan lagu yang sedang ada di antrean
+          if (currentQueue.some((qTrack: any) => isSameOrSimilarTrack(candidate, qTrack))) return false;
+
+          // Abaikan jika sudah pernah diputar di riwayat 50 lagu
+          const candCleanTitle = cleanTrackTitle(candidate.info?.title || "");
+          const inHistory = history.some(
+            (h) => h.id === candidate.info?.identifier || h.title === candCleanTitle
+          );
+          if (inHistory) return false;
+
+          // Filter durasi: antara 60 detik (1 menit) hingga 900 detik (15 menit)
+          const duration = candidate.info?.duration || 0;
+          if (duration < 60000 || duration > 900000) return false;
+
+          return true;
+        });
+
+        if (validCandidates.length > 0) {
+          const pickIndex = Math.floor(Math.random() * Math.min(validCandidates.length, 3));
+          candidateTrack = validCandidates[pickIndex] as Track;
+          break;
+        }
+      } catch (searchErr) {
+        // Lanjutkan ke query alternatif
+      }
+    }
+
+    if (candidateTrack) {
+      (candidateTrack as ExtendedTrack).isAutoplay = true;
+      player.set("autoplay_next_track", candidateTrack);
+    }
+  } catch (err) {
+    console.warn("[AUTOPLAY ENGINE] Gagal menyiapkan lagu autoplay:", err);
+  } finally {
+    player.set("autoplay_fetching", false);
+  }
+}
+
+/**
+ * Mendapatkan badge platform musik yang estetik
+ */
+export function getSourceBadge(sourceName?: string, uri?: string): string {
+  const src = (sourceName || "").toLowerCase();
+  const link = (uri || "").toLowerCase();
+
+  if (src.includes("spotify") || link.includes("spotify")) return "🟢 Spotify";
+  if (src.includes("youtubemusic") || link.includes("music.youtube")) return "🔴 YouTube Music";
+  if (src.includes("youtube") || link.includes("youtube") || link.includes("youtu.be")) return "🔴 YouTube";
+  if (src.includes("apple") || link.includes("music.apple")) return "🍎 Apple Music";
+  if (src.includes("soundcloud") || link.includes("soundcloud")) return "🟠 SoundCloud";
+  if (src.includes("deezer") || link.includes("deezer")) return "💙 Deezer";
+  if (src.includes("yandex") || link.includes("yandex")) return "🟡 Yandex Music";
+  if (src.includes("bandcamp") || link.includes("bandcamp")) return "💿 Bandcamp";
+  if (src.includes("twitch") || link.includes("twitch.tv")) return "🟣 Twitch";
+  if (link.match(/\.(mp3|wav|flac|ogg|m4a|aac)($|\?)/i)) return "📁 File Audio HTTP";
+  if (src.includes("http") || link.startsWith("http")) return "📻 HTTP Live Radio";
+
+  return `✨ ${sourceName || "Audio Stream"}`;
+}
+
+/**
+ * Membuat Embed Now Playing Resmi Multibahasa (Single Embed dengan kontrol penuh)
+ */
+export function buildNowPlayingEmbed(player: Player, track: Track): EmbedBuilder {
+  const lang = getGuildLanguage(player.guildId);
+  const isAutoplay = (track as ExtendedTrack).isAutoplay || player.get("current_is_autoplay") === true;
+  const sourceBadge = getSourceBadge(track.info.sourceName, track.info.uri);
+
+  const titleHeader = isAutoplay
+    ? t(lang, "nowplaying.header_autoplay")
+    : t(lang, "nowplaying.header_normal");
+
+  const color = isAutoplay ? config.embedColors.autoplay : config.embedColors.primary;
+
+  const currentPos = player.position || 0;
+  const totalLength = track.info.duration || 0;
+  const progressBar = createProgressBar(currentPos, totalLength, 15);
+
+  const repeatMode =
+    player.repeatMode === "track"
+      ? t(lang, "nowplaying.loop_track")
+      : player.repeatMode === "queue"
+      ? t(lang, "nowplaying.loop_queue")
+      : t(lang, "nowplaying.loop_off");
+
+  const autoplayStatus = player.get("autoplay")
+    ? t(lang, "nowplaying.status_active")
+    : t(lang, "nowplaying.status_inactive");
+
+  const mode247Status = player.get("mode_247")
+    ? t(lang, "nowplaying.status_active")
+    : t(lang, "nowplaying.status_inactive");
+
+  // Penentuan lagu berikutnya
+  let nextTrackText = t(lang, "nowplaying.next_empty");
+  if (player.queue.tracks.length > 0) {
+    const nextInQueue = player.queue.tracks[0];
+    nextTrackText = `[${nextInQueue.info.title}](${nextInQueue.info.uri || "https://discord.com"})`;
+  } else if (player.get("autoplay") && player.get("autoplay_next_track")) {
+    const autoNext: Track = player.get("autoplay_next_track");
+    nextTrackText = `📻 [Autoplay] ${autoNext.info.title} (${autoNext.info.author})`;
+  }
+
+  // Requester
+  let requesterText = `🤖 ${t(lang, "nowplaying.requester_radio")}`;
+  if (!isAutoplay && track.requester) {
+    const req = track.requester as any;
+    requesterText = `<@${req.id || req}>`;
+  }
+
+  const embed = new EmbedBuilder()
+    .setColor(color as any)
+    .setTitle(titleHeader)
+    .setDescription(
+      `### [${track.info.title}](${track.info.uri || "https://discord.com"})\n` +
+      `👤 ${t(lang, "nowplaying.artist")}: **${track.info.author || "Unknown"}** • ${t(lang, "nowplaying.source")}: **${sourceBadge}**\n\n` +
+      `${progressBar}`
+    )
+    .addFields(
+      { name: `⏱️ ${t(lang, "nowplaying.duration")}`, value: `\`${formatDuration(totalLength)}\``, inline: true },
+      { name: `👤 ${t(lang, "nowplaying.requester")}`, value: requesterText, inline: true },
+      { name: `🔊 ${t(lang, "nowplaying.volume")}`, value: `\`${player.volume}%\``, inline: true },
+      { name: `🔁 ${t(lang, "nowplaying.loop_mode")}`, value: `\`${repeatMode}\``, inline: true },
+      { name: `📻 ${t(lang, "nowplaying.autoplay_status")}`, value: `\`${autoplayStatus}\``, inline: true },
+      { name: `⏳ ${t(lang, "nowplaying.mode247_status")}`, value: `\`${mode247Status}\``, inline: true },
+      { name: `⏭️ ${t(lang, "nowplaying.next_track")}`, value: nextTrackText, inline: false }
+    )
+    .setTimestamp()
+    .setFooter({
+      text: t(lang, "common.footer"),
+      iconURL: getBotAvatar()
+    });
+
+  const artwork = track.info.artworkUrl || (track.info as any).thumbnail;
+  if (artwork) {
+    embed.setThumbnail(artwork);
+  }
+
+  return embed;
+}
+
+/**
+ * Membuat Tombol Komponen Kontrol Interaktif Multibahasa 2 Baris
+ */
+export function buildNowPlayingComponents(player: Player): ActionRowBuilder<ButtonBuilder>[] {
+  const lang = getGuildLanguage(player.guildId);
+  const isPaused = player.paused;
+  const isAutoplay = player.get("autoplay") === true;
+  const is247 = player.get("mode_247") === true;
+
+  // Baris 1: Play/Pause, Skip, Stop (Danger), Loop, Autoplay
+  const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId("music_toggle_pause")
+      .setLabel(isPaused ? t(lang, "buttons.resume") : t(lang, "buttons.pause"))
+      .setEmoji(isPaused ? "▶️" : "⏸️")
+      .setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId("music_skip")
+      .setLabel(t(lang, "buttons.skip"))
+      .setEmoji("⏭️")
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId("music_stop")
+      .setLabel(t(lang, "buttons.stop"))
+      .setEmoji("⏹️")
+      .setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
+      .setCustomId("music_toggle_loop")
+      .setLabel(`${t(lang, "buttons.loop")}: ${player.repeatMode.toUpperCase()}`)
+      .setEmoji("🔁")
+      .setStyle(player.repeatMode !== "off" ? ButtonStyle.Primary : ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId("music_toggle_autoplay")
+      .setLabel(`${t(lang, "buttons.autoplay")}: ${isAutoplay ? "ON" : "OFF"}`)
+      .setEmoji("📻")
+      .setStyle(isAutoplay ? ButtonStyle.Success : ButtonStyle.Secondary)
+  );
+
+  // Baris 2: Vol -10%, Vol +10%, Queue, Mode 24/7
+  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId("music_vol_down")
+      .setLabel(t(lang, "buttons.vol_down"))
+      .setEmoji("🔉")
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId("music_vol_up")
+      .setLabel(t(lang, "buttons.vol_up"))
+      .setEmoji("🔊")
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId("music_show_queue")
+      .setLabel(t(lang, "buttons.queue"))
+      .setEmoji("📜")
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId("music_toggle_247")
+      .setLabel(`${t(lang, "buttons.mode247")}: ${is247 ? "ON" : "OFF"}`)
+      .setEmoji("⏳")
+      .setStyle(is247 ? ButtonStyle.Success : ButtonStyle.Secondary)
+  );
+
+  return [row1, row2];
+}
+
+/**
+ * Membuat Embed Antrean (/queue) Multibahasa lengkap dengan bagian Rekomendasi Autoplay
+ */
+export function buildQueueEmbed(player: Player, guildName: string): EmbedBuilder {
+  const lang = getGuildLanguage(player.guildId);
+  const current = player.queue.current;
+  const tracks = player.queue.tracks;
+  const isAutoplay = player.get("autoplay") === true;
+  const autoNext: Track | null = player.get("autoplay_next_track");
+
+  const embed = new EmbedBuilder()
+    .setColor(config.embedColors.queue as any)
+    .setTitle(t(lang, "queue.title", { guild: guildName }))
+    .setTimestamp();
+
+  if (current) {
+    const badge = getSourceBadge(current.info.sourceName, current.info.uri);
+    embed.setDescription(
+      t(lang, "queue.now_playing", {
+        title: current.info.title,
+        uri: current.info.uri || "https://discord.com",
+        duration: formatDuration(current.info.duration),
+        source: badge
+      })
+    );
+  } else {
+    embed.setDescription(t(lang, "queue.empty_now_playing"));
+  }
+
+  // Tampilkan hingga 10 lagu antrean
+  if (tracks.length > 0) {
+    const list = tracks
+      .slice(0, 10)
+      .map((tTrack, index) => {
+        const req = tTrack.requester ? `<@${(tTrack.requester as any).id || tTrack.requester}>` : "Anon";
+        return `\`${index + 1}.\` [${tTrack.info.title}](${tTrack.info.uri || "https://discord.com"}) - \`${formatDuration(tTrack.info.duration)}\` (${req})`;
+      })
+      .join("\n");
+
+    const remaining = tracks.length - 10;
+    const remainingText = remaining > 0 ? t(lang, "queue.and_more", { count: remaining }) : "";
+
+    const totalDuration = tracks.reduce((acc, trk) => acc + (trk.info.duration || 0), 0);
+
+    embed.addFields({
+      name: t(lang, "queue.tracks_in_queue", { count: tracks.length, duration: formatDuration(totalDuration) }),
+      value: `${list}${remainingText}`,
+      inline: false
+    });
+  } else {
+    embed.addFields({
+      name: "📋 " + t(lang, "buttons.queue"),
+      value: t(lang, "queue.queue_empty"),
+      inline: false
+    });
+  }
+
+  // Bagian Khusus Rekomendasi Autoplay Berikutnya
+  if (isAutoplay) {
+    if (autoNext) {
+      embed.addFields({
+        name: t(lang, "queue.autoplay_next_title"),
+        value: t(lang, "queue.autoplay_next_desc", {
+          title: autoNext.info.title,
+          uri: autoNext.info.uri || "https://discord.com",
+          author: autoNext.info.author,
+          duration: formatDuration(autoNext.info.duration)
+        }),
+        inline: false
+      });
+    } else {
+      embed.addFields({
+        name: t(lang, "queue.autoplay_next_title"),
+        value: t(lang, "queue.autoplay_analyzing"),
+        inline: false
+      });
+    }
+  } else {
+    embed.addFields({
+      name: t(lang, "queue.autoplay_next_title"),
+      value: t(lang, "queue.autoplay_off_desc"),
+      inline: false
+    });
+  }
+
+  embed.setFooter({
+    text: `Loop: ${player.repeatMode.toUpperCase()} | Autoplay: ${isAutoplay ? "ON" : "OFF"} | 24/7: ${player.get("mode_247") ? "ON" : "OFF"}`,
+    iconURL: getBotAvatar()
+  });
+
+  return embed;
+}
+
+/**
+ * Menghapus pesan Now Playing lama dari channel
+ */
+export async function cleanOldNowPlayingMessage(player: Player, client: DiawwBotClient): Promise<void> {
+  const oldMsgId = player.get<string>("nowplaying_msg_id");
+  const oldChannelId = player.get<string>("nowplaying_channel_id");
+
+  if (!oldMsgId || !oldChannelId) return;
+
+  try {
+    const channel = (await client.channels.fetch(oldChannelId).catch(() => null)) as TextChannel | null;
+    if (channel) {
+      const msg = await channel.messages.fetch(oldMsgId).catch(() => null);
+      if (msg && "delete" in msg && typeof (msg as Message).delete === "function") {
+        await (msg as Message).delete().catch(() => {});
+      }
+    }
+  } catch (err) {
+    // Ignore error jika pesan sudah dihapus sebelumnya
+  } finally {
+    player.set("nowplaying_msg_id", null);
+  }
+}
+
+/**
+ * Menghancurkan player secara instan, keluar dari voice channel, dan bersihkan pesan kartu pemutar
+ */
+export async function destroyAndCleanPlayer(player: Player, client: DiawwBotClient): Promise<void> {
+  const timer = player.get<NodeJS.Timeout>("disconnect_timeout");
+  if (timer) {
+    clearTimeout(timer);
+    player.set("disconnect_timeout", null);
+  }
+
+  await cleanOldNowPlayingMessage(player, client);
+
+  player.queue.tracks.splice(0, player.queue.tracks.length);
+
+  try {
+    await player.stopPlaying(true, false);
+  } catch {}
+
+  try {
+    await player.disconnect();
+  } catch {}
+
+  try {
+    await player.destroy("User stop requested");
+  } catch {}
+}
+
+/**
+ * Sistem Pencarian Cerdas Multi-Tier:
+ * 1. Jika URL -> langsung cari via link asli
+ * 2. Jika judul teks dengan preferredPlatform -> cari sesuai platform tersebut
+ * 3. Jika judul teks mode Auto -> Spotify (spsearch:) -> YouTube (ytsearch:) -> Platform lain
+ */
+export async function smartSearch(
+  player: Player,
+  query: string,
+  user: User | any,
+  preferredPlatform?: string
+): Promise<SearchResult | null> {
+  const trimmed = query.trim();
+
+  // 1. Cek apakah input adalah link URL
+  if (/^https?:\/\//i.test(trimmed)) {
+    const res = await player.search({ query: trimmed }, user);
+    return res as SearchResult;
+  }
+
+  // 2. Jika platform ditentukan secara spesifik
+  if (preferredPlatform && preferredPlatform !== "auto") {
+    const platformPrefixMap: Record<string, string> = {
+      spotify: "spsearch:",
+      youtube: "ytsearch:",
+      youtubemusic: "ytmsearch:",
+      applemusic: "amsearch:",
+      deezer: "dzsearch:",
+      soundcloud: "scsearch:",
+      yandex: "ymsearch:"
+    };
+
+    const prefix = platformPrefixMap[preferredPlatform.toLowerCase()] || "spsearch:";
+    const res = await player.search({ query: `${prefix}${trimmed}` }, user);
+    return res as SearchResult;
+  }
+
+  // 3. Multi-Tier Search (Mode Auto)
+  // Urutan fallback: Spotify -> YouTube -> Apple Music -> Deezer -> SoundCloud -> YouTube Music -> Yandex
+  const tiers = [
+    { name: "Spotify", prefix: "spsearch:" },
+    { name: "YouTube", prefix: "ytsearch:" },
+    { name: "Apple Music", prefix: "amsearch:" },
+    { name: "Deezer", prefix: "dzsearch:" },
+    { name: "SoundCloud", prefix: "scsearch:" },
+    { name: "YouTube Music", prefix: "ytmsearch:" },
+    { name: "Yandex", prefix: "ymsearch:" }
+  ];
+
+  for (const tier of tiers) {
+    try {
+      const res = await player.search({ query: `${tier.prefix}${trimmed}` }, user);
+      if (res && res.tracks && res.tracks.length > 0) {
+        return res as SearchResult;
+      }
+    } catch (err) {
+      continue;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Inisialisasi LavalinkManager v4 dengan 2 node Serenetia dan event listeners lengkap
+ */
+export function initMusicManager(client: DiawwBotClient): LavalinkManager {
+  const manager = new LavalinkManager({
+    nodes: config.lavalink.nodes.map((node) => ({
+      id: node.id,
+      host: node.host,
+      port: node.port,
+      authorization: node.authorization,
+      secure: node.secure,
+      retryAmount: node.retryAmount || 10,
+      retryDelay: node.retryDelay || 5000,
+      requestTimeout: node.requestTimeout || 10000
+    })),
+    sendToShard: (guildId: string, payload: any) => {
+      client.guilds.cache.get(guildId)?.shard?.send(payload);
+    },
+    client: {
+      id: client.user?.id || process.env.CLIENT_ID || "",
+      username: client.user?.username || "DIAWW MUSIC"
+    },
+    autoSkip: true,
+    playerOptions: {
+      clientBasedPositionUpdateInterval: 100,
+      defaultSearchPlatform: "spsearch",
+      volumeDecrementer: 1,
+      onDisconnect: {
+        autoReconnect: true,
+        destroyPlayer: false
+      }
+    },
+    queueOptions: {
+      maxPreviousTracks: 50
+    }
+  });
+
+  // Forward Voice Gateway events ke Lavalink
+  client.on("raw", (d) => manager.sendRawData(d));
+
+  // Node Manager Events
+  manager.nodeManager.on("connect", (node) => {
+    console.log(`[LAVALINK v4] ✅ Node '${node.id}' (${node.options.host}:${node.options.port}) BERHASIL TERHUBUNG!`);
+  });
+
+  manager.nodeManager.on("disconnect", (node, reason) => {
+    console.warn(`[LAVALINK v4] ⚠️ Node '${node.id}' terputus. Alasan:`, reason);
+  });
+
+  manager.nodeManager.on("error", (node, error) => {
+    console.error(`[LAVALINK v4] ❌ Error pada node '${node.id}':`, error.message);
+  });
+
+  // Player Event: trackStart
+  manager.on("trackStart", async (player: Player, track: Track | null) => {
+    if (!track) return;
+
+    const timer = player.get<NodeJS.Timeout>("disconnect_timeout");
+    if (timer) {
+      clearTimeout(timer);
+      player.set("disconnect_timeout", null);
+    }
+
+    recordPlayedTrack(player, track);
+
+    const isAutoplay = (track as ExtendedTrack).isAutoplay === true;
+    player.set("current_is_autoplay", isAutoplay);
+
+    if (player.get("autoplay") === true) {
+      prepareAutoplayNextTrack(player, client, track).catch(() => {});
+    }
+
+    await cleanOldNowPlayingMessage(player, client);
+
+    if (player.textChannelId) {
+      try {
+        const channel = (await client.channels.fetch(player.textChannelId).catch(() => null)) as TextChannel | null;
+        if (channel) {
+          const embed = buildNowPlayingEmbed(player, track);
+          const components = buildNowPlayingComponents(player);
+
+          const msg = await channel.send({ embeds: [embed], components });
+          player.set("nowplaying_msg_id", msg.id);
+          player.set("nowplaying_channel_id", msg.channelId);
+        }
+      } catch (sendErr) {
+        console.error("[MUSIC MANAGER] Gagal mengirim pesan now playing:", sendErr);
+      }
+    }
+  });
+
+  // Player Event: queueEnd
+  manager.on("queueEnd", async (player: Player, track: any) => {
+    const lang = getGuildLanguage(player.guildId);
+
+    // 1. Cek Autoplay
+    if (player.get("autoplay") === true) {
+      let nextTrack: Track | null = player.get("autoplay_next_track");
+
+      if (!nextTrack && track) {
+        await prepareAutoplayNextTrack(player, client, track as Track);
+        nextTrack = player.get("autoplay_next_track");
+      }
+
+      if (nextTrack) {
+        player.set("autoplay_next_track", null);
+        (nextTrack as ExtendedTrack).isAutoplay = true;
+
+        player.queue.add(nextTrack);
+        await player.play();
+        return;
+      }
+    }
+
+    // 2. Cek Mode 24/7
+    const guildSettings = getGuildSettings(player.guildId);
+    const is247 = player.get("mode_247") === true || guildSettings.mode_247 === 1;
+
+    if (is247) {
+      if (player.textChannelId) {
+        try {
+          const channel = (await client.channels.fetch(player.textChannelId).catch(() => null)) as TextChannel | null;
+          if (channel) {
+            const embed = createInfoEmbed(
+              t(lang, "events.queue_end_247_title"),
+              t(lang, "events.queue_end_247_desc")
+            );
+            await channel.send({ embeds: [embed] });
+          }
+        } catch {}
+      }
+      return;
+    }
+
+    // 3. Mode Normal (Non-24/7): Beritahu dan hitung mundur 60 detik untuk keluar
+    if (player.textChannelId) {
+      try {
+        const channel = (await client.channels.fetch(player.textChannelId).catch(() => null)) as TextChannel | null;
+        if (channel) {
+          const embed = createWarningEmbed(
+            t(lang, "events.queue_end_countdown_title"),
+            t(lang, "events.queue_end_countdown_desc")
+          );
+          await channel.send({ embeds: [embed] });
+        }
+      } catch {}
+    }
+
+    const disconnectTimer = setTimeout(async () => {
+      if (!player.queue.current && player.queue.tracks.length === 0 && !player.get("mode_247")) {
+        await destroyAndCleanPlayer(player, client);
+      }
+    }, config.lavalink.disconnectTimeout || 60000);
+
+    player.set("disconnect_timeout", disconnectTimer);
+  });
+
+  // Player Event: playerDisconnect
+  manager.on("playerDisconnect", async (player: Player) => {
+    await cleanOldNowPlayingMessage(player, client);
+  });
+
+  return manager;
+}

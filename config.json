@@ -1,0 +1,47 @@
+{
+  "bot": {
+    "name": "DIAWW MUSIC",
+    "defaultPrefix": "w!",
+    "status": [
+      { "name": "w!help | DIAWW MUSIC", "type": 2 },
+      { "name": "/play | High-Fidelity Audio", "type": 2 },
+      { "name": "9+ Sumber Musik & Radio", "type": 0 }
+    ],
+    "statusInterval": 30000
+  },
+  "lavalink": {
+    "nodes": [
+      {
+        "id": "Serenetia-SSL",
+        "host": "lavalinkv4.serenetia.com",
+        "port": 443,
+        "authorization": "https://seretia.link/discord",
+        "secure": true,
+        "retryAmount": 10,
+        "retryDelay": 5000,
+        "requestTimeout": 10000
+      },
+      {
+        "id": "Serenetia-NonSSL",
+        "host": "lavalinkv4.serenetia.com",
+        "port": 80,
+        "authorization": "https://seretia.link/discord",
+        "secure": false,
+        "retryAmount": 10,
+        "retryDelay": 5000,
+        "requestTimeout": 10000
+      }
+    ],
+    "defaultVolume": 80,
+    "maxVolume": 150,
+    "disconnectTimeout": 60000
+  },
+  "embedColors": {
+    "primary": "#5865F2",
+    "success": "#57F287",
+    "warning": "#FEE75C",
+    "error": "#ED4245",
+    "autoplay": "#EB459E",
+    "queue": "#9B59B6"
+  }
+}

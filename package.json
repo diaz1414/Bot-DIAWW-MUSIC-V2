@@ -1,0 +1,36 @@
+{
+  "name": "diaww-music",
+  "version": "2.0.0",
+  "description": "Dedicated High-Fidelity Discord Music Bot with Bun & Node.js support",
+  "main": "index.ts",
+  "scripts": {
+    "start": "bun run index.ts",
+    "dev": "bun --watch src/index.ts",
+    "build": "tsc",
+    "node:start": "node dist/index.js",
+    "node:dev": "npx tsx src/index.ts"
+  },
+  "keywords": [
+    "discord",
+    "music",
+    "bot",
+    "lavalink",
+    "bun",
+    "pterodactyl"
+  ],
+  "author": "DIAWW Team",
+  "license": "MIT",
+  "dependencies": {
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.5",
+    "lavalink-client": "^2.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.8.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
