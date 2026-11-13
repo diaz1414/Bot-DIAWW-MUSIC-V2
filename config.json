@@ -26,8 +26,8 @@
         "port": 443,
         "authorization": "https://seretia.link/discord",
         "secure": true,
-        "retryAmount": 10,
-        "retryDelay": 5000,
+        "retryAmount": 100,
+        "retryDelay": 3000,
         "requestTimeout": 10000
       },
       {
@@ -36,8 +36,8 @@
         "port": 80,
         "authorization": "https://seretia.link/discord",
         "secure": false,
-        "retryAmount": 10,
-        "retryDelay": 5000,
+        "retryAmount": 100,
+        "retryDelay": 3000,
         "requestTimeout": 10000
       }
     ],

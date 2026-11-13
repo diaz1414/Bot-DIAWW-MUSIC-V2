@@ -567,7 +567,7 @@ export async function smartSearch(
 }
 
 /**
- * Inisialisasi LavalinkManager v4 dengan 2 node Serenetia dan event listeners lengkap
+ * Inisialisasi LavalinkManager v4 dengan 2 node Serenetia, auto-failover, dan auto-reconnect tanpa henti
  */
 export function initMusicManager(client: DiawwBotClient): LavalinkManager {
   const manager = new LavalinkManager({
@@ -577,9 +577,11 @@ export function initMusicManager(client: DiawwBotClient): LavalinkManager {
       port: node.port,
       authorization: node.authorization,
       secure: node.secure,
-      retryAmount: node.retryAmount || 10,
-      retryDelay: node.retryDelay || 5000,
-      requestTimeout: node.requestTimeout || 10000
+      retryAmount: node.retryAmount || 100,
+      retryDelay: node.retryDelay || 3000,
+      requestTimeout: node.requestTimeout || 10000,
+      heartBeatInterval: 15000,
+      enablePingOnStatsCheck: true
     })),
     sendToShard: (guildId: string, payload: any) => {
       client.guilds.cache.get(guildId)?.shard?.send(payload);
@@ -589,12 +591,21 @@ export function initMusicManager(client: DiawwBotClient): LavalinkManager {
       username: client.user?.username || "DIAWW MUSIC"
     },
     autoSkip: true,
+    autoMove: true,
+    advancedOptions: {
+      playerMigration: {
+        concurrency: 5,
+        perTargetConcurrency: 2,
+        backpressureDelayMs: 50
+      }
+    },
     playerOptions: {
       clientBasedPositionUpdateInterval: 100,
       defaultSearchPlatform: "spsearch",
       volumeDecrementer: 1,
       onDisconnect: {
         autoReconnect: true,
+        autoReconnectOnlyWithTracks: false,
         destroyPlayer: false
       }
     },
@@ -606,13 +617,67 @@ export function initMusicManager(client: DiawwBotClient): LavalinkManager {
   // Forward Voice Gateway events ke Lavalink
   client.on("raw", (d) => manager.sendRawData(d));
 
-  // Node Manager Events
-  manager.nodeManager.on("connect", (node) => {
+  // Node Manager Events: Koneksi, Rekoneksi, dan Failover Otomatis
+  manager.nodeManager.on("connect", async (node) => {
     console.log(`[LAVALINK v4] ✅ Node '${node.id}' (${node.options.host}:${node.options.port}) BERHASIL TERHUBUNG!`);
+
+    // Pemulihan otomatis jika ada player aktif yang terhenti saat node sebelumnya down
+    const strandedPlayers = Array.from(manager.players.values()).filter(
+      (p) => (!p.node || !p.node.connected) && (p.queue.current || p.queue.tracks.length > 0)
+    );
+    for (const player of strandedPlayers) {
+      console.log(`[LAVALINK RECOVERY] 🔄 Memulihkan pemutaran lagu Guild ${player.guildId} ke node '${node.id}'...`);
+      try {
+        await player.changeNode(node);
+        if (!player.playing && player.queue.current) {
+          await player.play();
+        }
+      } catch (recErr) {
+        console.error(`[LAVALINK RECOVERY] ❌ Gagal memulihkan player Guild ${player.guildId}:`, recErr);
+      }
+    }
   });
 
-  manager.nodeManager.on("disconnect", (node, reason) => {
+  manager.nodeManager.on("reconnecting", (node) => {
+    console.log(`[LAVALINK v4] 🔄 Node '${node.id}' sedang mencoba menyambung kembali (reconnecting)...`);
+  });
+
+  manager.nodeManager.on("reconnectinprogress", (node) => {
+    console.log(`[LAVALINK v4] ⏳ Proses auto-reconnect aktif untuk node '${node.id}'...`);
+  });
+
+  manager.nodeManager.on("disconnect", async (node, reason) => {
     console.warn(`[LAVALINK v4] ⚠️ Node '${node.id}' terputus. Alasan:`, reason);
+
+    // Auto-Failover Safeguard: Cek apakah ada node sehat cadangan
+    const healthyNodes = Array.from(manager.nodeManager.nodes.values()).filter(
+      (n) => n.id !== node.id && n.connected && !!n.sessionId
+    );
+
+    if (healthyNodes.length > 0) {
+      const targetNode = healthyNodes[0];
+      const affectedPlayers = Array.from(manager.players.values()).filter(
+        (p) => p.node?.id === node.id && (p.playing || p.queue.current)
+      );
+
+      for (const player of affectedPlayers) {
+        if (player.getData("internal_nodeChanging") !== true) {
+          console.log(`[LAVALINK FAILOVER] 🔀 Memindahkan audio Guild ${player.guildId} dari '${node.id}' ke node cadangan '${targetNode.id}'...`);
+          try {
+            await player.changeNode(targetNode);
+          } catch (failoverErr) {
+            console.error(`[LAVALINK FAILOVER] ❌ Gagal memindahkan audio Guild ${player.guildId}:`, failoverErr);
+          }
+        }
+      }
+    } else {
+      console.warn(`[LAVALINK FAILOVER] ⚠️ Seluruh node Lavalink sedang offline. Menunggu proses auto-reconnect...`);
+    }
+  });
+
+  manager.nodeManager.on("resumed", (node, payload, players) => {
+    const playerCount = Array.isArray(players) ? players.length : 0;
+    console.log(`[LAVALINK v4] ⚡ Session berhasil di-resume pada node '${node.id}'! (${playerCount} player tersinkronisasi)`);
   });
 
   manager.nodeManager.on("error", (node, error) => {
