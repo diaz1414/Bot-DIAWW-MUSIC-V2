@@ -31,7 +31,7 @@ export default async function onMessageCreate(
             "Jika ingin mengirim aduan, kendala, atau saran ke developer, gunakan perintah `/support <pesan>` di server Discord."
           )
         ]
-      }).catch(() => {});
+      }).catch(() => { });
     }
     return;
   }
@@ -76,6 +76,6 @@ export default async function onMessageCreate(
           t(lang, "common.system_error")
         )
       ]
-    }).catch(() => {});
+    }).catch(() => { });
   }
 }
