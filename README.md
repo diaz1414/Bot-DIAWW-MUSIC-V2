@@ -273,7 +273,8 @@ Cukup kirim pesan langsung (DM) ke akun bot Discord Anda dengan mengetik `panel`
 3. **`servers` / `guilds`**: Menampilkan seluruh server Discord yang menggunakan bot Anda, lengkap dengan ID Server, jumlah anggota warga, dan status pemutaran musik saat itu.
 4. **`leave <guild_id>`**: Memerintahkan bot keluar secara paksa dari server tertentu jika diperlukan.
 5. **`reply <user_id> <pesan>`**: Membalas laporan/aduan pengguna yang masuk ke DM Anda. Bot akan otomatis mengirimkan pesan balasan resmi langsung ke DM pengguna tersebut.
-6. **`broadcast <pesan>`**: Mengirimkan pengumuman resmi ke channel teks utama di seluruh server Discord yang mengundang bot.
+6. **`broadcast <pesan>`**: Mengirimkan pengumuman resmi **HANYA ke server yang sedang aktif memutar musik / menggunakan bot** (pesan muncul langsung di channel pemutaran lagu tanpa mengganggu channel umum server yang sedang idle).
+   - Opsi `broadcast all <pesan>` tersedia jika ingin mengirim ke seluruh server tanpa terkecuali.
 7. **`restart`**: Melakukan restart bot proses secara graceful (aman untuk hosting Pterodactyl/PM2).
 8. **`eval <code>`**: Menjalankan evaluasi kode JavaScript/TypeScript untuk keperluan pemeliharaan atau debugging teknis.
 

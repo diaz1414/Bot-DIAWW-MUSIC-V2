@@ -115,7 +115,8 @@ export function buildOwnerPanelEmbed(client: DiawwBotClient): { embed: EmbedBuil
           `• \`servers\` / \`guilds\` — Lihat seluruh daftar server tempat bot berada.\n` +
           `• \`leave <guild_id>\` — Perintahkan bot keluar dari server tertentu.\n` +
           `• \`reply <user_id> <pesan>\` — Balas aduan laporan user langsung ke DM mereka.\n` +
-          `• \`broadcast <pesan>\` — Kirim pengumuman update ke seluruh server.\n` +
+          `• \`broadcast <pesan>\` — Kirim pengumuman HANYA ke server yang sedang aktif memutar musik.\n` +
+          `• \`broadcast all <pesan>\` — Kirim pengumuman ke seluruh server tanpa terkecuali.\n` +
           `• \`restart\` — Restart bot process secara graceful.\n` +
           `• \`eval <code>\` — Eksekusi kode JavaScript/TypeScript langsung.`,
         inline: false
@@ -406,37 +407,131 @@ export async function handleOwnerDM(client: DiawwBotClient, message: Message): P
 
     case "broadcast":
     case "bc": {
-      const broadcastMsg = args.join(" ");
-      if (!broadcastMsg) {
+      if (!args[0]) {
         await message.reply({
-          embeds: [createErrorEmbed("Format Salah", "Gunakan format: `broadcast <pesan pengumuman>`")]
+          embeds: [
+            createErrorEmbed(
+              "Format Salah",
+              "Gunakan salah satu format berikut:\n" +
+              "• `broadcast <pesan>` — Kirim HANYA ke server yang **sedang aktif memutar musik / menggunakan bot**.\n" +
+              "• `broadcast all <pesan>` — Kirim ke **semua server** tanpa terkecuali."
+            )
+          ]
         });
         return;
       }
 
+      const isAllMode = args[0].toLowerCase() === "all";
+      const broadcastMsg = isAllMode ? args.slice(1).join(" ") : args.join(" ");
+
+      if (!broadcastMsg) {
+        await message.reply({
+          embeds: [createErrorEmbed("Format Salah", "Pesan pengumuman tidak boleh kosong!")]
+        });
+        return;
+      }
+
+      const broadcastEmbed = new EmbedBuilder()
+        .setColor(client.config.embedColors.primary as any)
+        .setTitle("📢 PENGUMUMAN RESMI DEVELOPER • DIAWW MUSIC")
+        .setDescription(broadcastMsg)
+        .setTimestamp()
+        .setFooter({ text: "DIAWW MUSIC • Official Announcement", iconURL: getBotAvatar() });
+
+      // ========================================================================
+      // MODE 1: HANYA SERVER YANG SEDANG AKTIF MENGGUNAKAN BOT / MEMUTAR MUSIK
+      // ========================================================================
+      if (!isAllMode) {
+        const activeTargets: Array<{ guild: Guild; channel: TextChannel; currentTrack?: string }> = [];
+
+        if (client.lavalink) {
+          for (const [guildId, player] of client.lavalink.players.entries()) {
+            if (
+              player &&
+              player.connected &&
+              player.voiceChannelId &&
+              (player.playing || player.paused || player.queue.current)
+            ) {
+              const guild = client.guilds.cache.get(guildId);
+              if (!guild) continue;
+
+              const textChannelId = player.textChannelId;
+              if (!textChannelId) continue;
+
+              const channel = guild.channels.cache.get(textChannelId) as TextChannel | null;
+              if (channel && channel.isTextBased()) {
+                activeTargets.push({
+                  guild,
+                  channel,
+                  currentTrack: player.queue.current?.info?.title || "Audio Stream"
+                });
+              }
+            }
+          }
+        }
+
+        if (activeTargets.length === 0) {
+          await message.reply({
+            embeds: [
+              createBaseEmbed(
+                "Tidak Ada Server Aktif",
+                "⚠️ Saat ini **tidak ada server yang sedang memutar musik atau menggunakan bot**.\n\n" +
+                "Broadcast dibatalkan agar tidak mengganggu channel umum server yang sedang idle.\n" +
+                "💡 *Jika kamu tetap ingin mengirim ke semua server tanpa peduli sedang aktif atau tidak, gunakan:* \`broadcast all <pesan>\`"
+              )
+            ]
+          });
+          return;
+        }
+
+        const progressMsg = await message.reply(
+          `📢 Mengirim pengumuman ke **${activeTargets.length} server** yang sedang aktif memutar musik...`
+        );
+
+        let successCount = 0;
+        const sentServerList: string[] = [];
+
+        for (const target of activeTargets) {
+          try {
+            await target.channel.send({ embeds: [broadcastEmbed] });
+            successCount++;
+            sentServerList.push(`• **${target.guild.name}** (Sedang memutar: *${target.currentTrack}*)`);
+          } catch (err) {
+            console.error(`[BROADCAST ACTIVE] Gagal mengirim ke ${target.guild.name}:`, err);
+          }
+        }
+
+        await progressMsg.edit({
+          content: null,
+          embeds: [
+            createSuccessEmbed(
+              "Broadcast Server Aktif Selesai",
+              `Pengumuman berhasil dikirimkan langsung ke text channel pemutar di **${successCount} server aktif**:\n\n` +
+              sentServerList.join("\n")
+            )
+          ]
+        });
+        break;
+      }
+
+      // ========================================================================
+      // MODE 2: SELURUH SERVER (broadcast all <pesan>)
+      // ========================================================================
       let successCount = 0;
       let failCount = 0;
 
       const progressMsg = await message.reply("📢 Mengirim pengumuman ke seluruh server...");
 
-      const broadcastEmbed = new EmbedBuilder()
-        .setColor(client.config.embedColors.primary as any)
-        .setTitle("📢 PENGUMUMAN RESMI • DIAWW MUSIC")
-        .setDescription(broadcastMsg)
-        .setTimestamp()
-        .setFooter({ text: "DIAWW MUSIC • Developer Announcement", iconURL: getBotAvatar() });
-
       for (const guild of client.guilds.cache.values()) {
         try {
-          // Cari channel teks yang tepat untuk pengumuman
           const channel =
             guild.systemChannel ||
-            guild.channels.cache.find(
+            (guild.channels.cache.find(
               (ch) =>
                 ch.isTextBased() &&
                 !ch.isVoiceBased() &&
                 ch.permissionsFor(guild.members.me || "")?.has(["SendMessages", "ViewChannel"])
-            ) as TextChannel | null;
+            ) as TextChannel | null);
 
           if (channel) {
             await channel.send({ embeds: [broadcastEmbed] });
@@ -453,8 +548,8 @@ export async function handleOwnerDM(client: DiawwBotClient, message: Message): P
         content: null,
         embeds: [
           createSuccessEmbed(
-            "Broadcast Selesai",
-            `Pengumuman berhasil dikirim ke **${successCount} server**.\n(Gagal di ${failCount} server karena tidak ada izin channel teks).`
+            "Broadcast ke Semua Server Selesai",
+            `Pengumuman berhasil dikirim ke **${successCount} server**.\n(Gagal di ${failCount} server karena ketiadaan izin channel teks).`
           )
         ]
       });
