@@ -165,6 +165,25 @@ const es: TranslationSchema = {
     general_commands: "🛠️ Comandos Generales y Servidor",
     buttons_info: "🔘 Botones de Control Interactivo (Tarjeta Now Playing)"
   },
+  playlist: {
+    title: "Lista de Reproducción Personal",
+    created: "¡Se ha creado la lista de reproducción **{name}**!",
+    deleted: "Se ha eliminado la lista de reproducción **{name}**.",
+    not_found: "No se encontró la lista de reproducción **{name}**.",
+    already_exists: "¡Ya tienes una lista de reproducción llamada **{name}**!",
+    limit_reached: "Has alcanzado el límite de **10 listas de reproducción**.",
+    track_added: "¡Se ha añadido **[{title}]({uri})** a la lista **{name}**!",
+    track_limit_reached: "La lista **{name}** ha alcanzado el límite de **50 canciones**.",
+    track_removed: "Se ha eliminado **{title}** de la lista **{name}**.",
+    invalid_index: "¡Número de canción no válido!",
+    empty: "La lista **{name}** no tiene canciones.",
+    list_title: "📂 Tus Listas de Reproducción ({count}/10)",
+    list_empty: "¡Aún no tienes listas de reproducción! Crea una con `/playlist create <nombre>`.",
+    view_title: "📂 Lista: {name} ({count}/50 Canciones)",
+    playing: "¡Cargando y reproduciendo **{count} canciones** de la lista **{name}**!",
+    no_tracks_to_play: "No se puede reproducir la lista **{name}** porque está vacía.",
+    name_invalid: "El nombre debe tener entre 1 y 32 caracteres."
+  },
   events: {
     queue_end_247_title: "Cola Finalizada",
     queue_end_247_desc: "Todas las canciones han terminado. El bot permanece en espera porque el **Modo 24/7 está Activo**.",

@@ -165,6 +165,25 @@ export interface TranslationSchema {
     general_commands: string;
     buttons_info: string;
   };
+  playlist: {
+    title: string;
+    created: string;
+    deleted: string;
+    not_found: string;
+    already_exists: string;
+    limit_reached: string;
+    track_added: string;
+    track_limit_reached: string;
+    track_removed: string;
+    invalid_index: string;
+    empty: string;
+    list_title: string;
+    list_empty: string;
+    view_title: string;
+    playing: string;
+    no_tracks_to_play: string;
+    name_invalid: string;
+  };
   events: {
     queue_end_247_title: string;
     queue_end_247_desc: string;

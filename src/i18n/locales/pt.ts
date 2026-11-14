@@ -165,6 +165,25 @@ const pt: TranslationSchema = {
     general_commands: "🛠️ Comandos Gerais e Servidor",
     buttons_info: "🔘 Botões Interativos de Controle (Now Playing Card)"
   },
+  playlist: {
+    title: "Playlist Personalizada",
+    created: "Playlist **{name}** criada com sucesso!",
+    deleted: "Playlist **{name}** excluída com sucesso.",
+    not_found: "Playlist **{name}** não foi encontrada.",
+    already_exists: "Você já possui uma playlist chamada **{name}**!",
+    limit_reached: "Você atingiu o limite de **10 playlists**.",
+    track_added: "**[{title}]({uri})** adicionado à playlist **{name}**!",
+    track_limit_reached: "A playlist **{name}** atingiu o limite de **50 músicas**.",
+    track_removed: "**{title}** removido da playlist **{name}**.",
+    invalid_index: "Número de música inválido!",
+    empty: "A playlist **{name}** está vazia.",
+    list_title: "📂 Suas Playlists ({count}/10)",
+    list_empty: "Você ainda não tem playlists! Crie uma com `/playlist create <nome>`.",
+    view_title: "📂 Playlist: {name} ({count}/50 Músicas)",
+    playing: "Carregando e reproduzindo **{count} músicas** da playlist **{name}**!",
+    no_tracks_to_play: "Não é possível reproduzir a playlist **{name}** pois ela está vazia.",
+    name_invalid: "O nome da playlist deve ter entre 1 e 32 caracteres."
+  },
   events: {
     queue_end_247_title: "Fila Concluída",
     queue_end_247_desc: "Todas as músicas terminaram. O bot continuará em espera porque o **Modo 24/7 está Ativo**.",

@@ -41,6 +41,7 @@ const helpCommand: Command = {
           name: t(lang, "help.music_commands"),
           value:
             `• \`/play <query>\` | \`${p}play\` (\`${p}p\`) — Play URL / search songs.\n` +
+            `• \`/playlist\` | \`${p}playlist\` (\`${p}pl\`) — Custom user playlists (save & play personal songs).\n` +
             `• \`/stop\` | \`${p}stop\` (\`${p}dc\`, \`${p}leave\`) — Stop playback & disconnect instantly.\n` +
             `• \`/skip\` | \`${p}skip\` (\`${p}s\`) — Skip current track.\n` +
             `• \`/pause\` | \`${p}pause\` — Pause audio playback.\n` +
@@ -100,6 +101,7 @@ const helpCommand: Command = {
           name: t(lang, "help.music_commands"),
           value:
             `• \`/play <query>\` | \`${p}play\` (\`${p}p\`) — Play URL / search songs.\n` +
+            `• \`/playlist\` | \`${p}playlist\` (\`${p}pl\`) — Custom user playlists (save & play personal songs).\n` +
             `• \`/stop\` | \`${p}stop\` (\`${p}dc\`, \`${p}leave\`) — Stop playback & disconnect instantly.\n` +
             `• \`/skip\` | \`${p}skip\` (\`${p}s\`) — Skip current track.\n` +
             `• \`/pause\` | \`${p}pause\` — Pause audio playback.\n` +

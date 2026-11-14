@@ -165,6 +165,25 @@ const id: TranslationSchema = {
     general_commands: "🛠️ Perintah Umum & Server",
     buttons_info: "🔘 Tombol Kontrol Interaktif (Now Playing Card)"
   },
+  playlist: {
+    title: "Playlist Pribadi Pengguna",
+    created: "Berhasil membuat playlist baru bernama **{name}**!",
+    deleted: "Berhasil menghapus playlist **{name}**.",
+    not_found: "Playlist bernama **{name}** tidak ditemukan di koleksimu.",
+    already_exists: "Kamu sudah memiliki playlist bernama **{name}**!",
+    limit_reached: "Kamu sudah mencapai batas maksimal **10 playlist**. Hapus salah satu untuk membuat yang baru.",
+    track_added: "Berhasil menambahkan lagu **[{title}]({uri})** ke playlist **{name}**!",
+    track_limit_reached: "Playlist **{name}** sudah mencapai batas maksimal **50 lagu**.",
+    track_removed: "Berhasil menghapus **{title}** dari playlist **{name}**.",
+    invalid_index: "Nomor urut lagu tidak valid! Cek daftar nomor menggunakan `/playlist view {name}`.",
+    empty: "Playlist **{name}** saat ini masih kosong.",
+    list_title: "📂 Daftar Playlist Kamu ({count}/10)",
+    list_empty: "Kamu belum memiliki playlist apapun! Buat dengan `/playlist create <nama>`.",
+    view_title: "📂 Isi Playlist: {name} ({count}/50 Lagu)",
+    playing: "Sedang memuat dan memutar **{count} lagu** dari playlist **{name}**!",
+    no_tracks_to_play: "Tidak dapat memutar playlist **{name}** karena belum memiliki lagu.",
+    name_invalid: "Nama playlist harus berukuran antara 1 hingga 32 karakter."
+  },
   events: {
     queue_end_247_title: "Antrean Telah Selesai",
     queue_end_247_desc: "Semua lagu telah selesai diputar. Bot tetap siaga di voice channel karena **Mode 24/7 Aktif**.",

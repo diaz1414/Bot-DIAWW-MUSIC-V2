@@ -165,6 +165,25 @@ const fr: TranslationSchema = {
     general_commands: "🛠️ Commandes Générales & Serveur",
     buttons_info: "🔘 Boutons de Contrôle Interactifs (Now Playing Card)"
   },
+  playlist: {
+    title: "Playlists Personnalisées",
+    created: "Playlist **{name}** créée avec succès !",
+    deleted: "Playlist **{name}** supprimée avec succès.",
+    not_found: "Playlist **{name}** introuvable.",
+    already_exists: "Vous possédez déjà une playlist nommée **{name}** !",
+    limit_reached: "Vous avez atteint la limite de **10 playlists**.",
+    track_added: "**[{title}]({uri})** a été ajouté à la playlist **{name}** !",
+    track_limit_reached: "La playlist **{name}** a atteint la limite de **50 pistes**.",
+    track_removed: "**{title}** a été retiré de la playlist **{name}**.",
+    invalid_index: "Numéro de piste invalide !",
+    empty: "La playlist **{name}** est vide.",
+    list_title: "📂 Vos Playlists ({count}/10)",
+    list_empty: "Vous n'avez pas encore de playlist ! Créez-en une avec `/playlist create <nom>`.",
+    view_title: "📂 Playlist : {name} ({count}/50 Pistes)",
+    playing: "Chargement et lecture de **{count} pistes** de la playlist **{name}** !",
+    no_tracks_to_play: "Impossible de lire la playlist **{name}** car elle est vide.",
+    name_invalid: "Le nom de la playlist doit comporter entre 1 et 32 caractères."
+  },
   events: {
     queue_end_247_title: "File Terminée",
     queue_end_247_desc: "Toutes les pistes ont été jouées. Le bot reste dans le salon vocal car le **Mode 24/7 est Actif**.",

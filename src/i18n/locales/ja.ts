@@ -165,6 +165,25 @@ const ja: TranslationSchema = {
     general_commands: "🛠️ 一般・サーバー設定",
     buttons_info: "🔘 インタラクティブ操作ボタン (Now Playing カード)"
   },
+  playlist: {
+    title: "カスタムプレイリスト",
+    created: "プレイリスト **{name}** を作成しました！",
+    deleted: "プレイリスト **{name}** を削除しました。",
+    not_found: "プレイリスト **{name}** が見つかりませんでした。",
+    already_exists: "既に **{name}** という名前のプレイリストが存在します！",
+    limit_reached: "プレイリストは最大 **10件** まで作成できます。",
+    track_added: "**[{title}]({uri})** をプレイリスト **{name}** に追加しました！",
+    track_limit_reached: "プレイリスト **{name}** は上限の **50曲** に達しています。",
+    track_removed: "**{title}** をプレイリスト **{name}** から削除しました。",
+    invalid_index: "無効な曲番号です！",
+    empty: "プレイリスト **{name}** には曲がありません。",
+    list_title: "📂 あなたのプレイリスト ({count}/10)",
+    list_empty: "プレイリストがありません。`/playlist create <名前>` で作成できます。",
+    view_title: "📂 プレイリスト: {name} ({count}/50 曲)",
+    playing: "プレイリスト **{name}** から **{count}曲** を読み込んで再生します！",
+    no_tracks_to_play: "プレイリスト **{name}** に曲がないため再生できません。",
+    name_invalid: "プレイリスト名は1〜32文字で指定してください。"
+  },
   events: {
     queue_end_247_title: "キューが終了しました",
     queue_end_247_desc: "すべての曲の再生が終了しました。**24/7モードが有効**なためボットは待機を続けます。",

@@ -165,6 +165,25 @@ const en: TranslationSchema = {
     general_commands: "🛠️ General & Server Commands",
     buttons_info: "🔘 Interactive Control Buttons (Now Playing Card)"
   },
+  playlist: {
+    title: "User Custom Playlist",
+    created: "Successfully created playlist **{name}**!",
+    deleted: "Successfully deleted playlist **{name}**.",
+    not_found: "Playlist **{name}** was not found in your collection.",
+    already_exists: "You already have a playlist named **{name}**!",
+    limit_reached: "You have reached the limit of **10 playlists**. Delete an old playlist to create a new one.",
+    track_added: "Added **[{title}]({uri})** to playlist **{name}**!",
+    track_limit_reached: "Playlist **{name}** has reached its maximum limit of **50 tracks**.",
+    track_removed: "Removed **{title}** from playlist **{name}**.",
+    invalid_index: "Invalid track number! Check song numbers using `/playlist view {name}`.",
+    empty: "Playlist **{name}** currently has no tracks.",
+    list_title: "📂 Your Playlists ({count}/10)",
+    list_empty: "You don't have any playlists yet! Create one with `/playlist create <name>`.",
+    view_title: "📂 Playlist: {name} ({count}/50 Tracks)",
+    playing: "Now loading and playing **{count} tracks** from playlist **{name}**!",
+    no_tracks_to_play: "Cannot play playlist **{name}** because it has no tracks.",
+    name_invalid: "Playlist name must be 1-32 characters long."
+  },
   events: {
     queue_end_247_title: "Queue Finished",
     queue_end_247_desc: "All tracks have finished playing. Bot remains on standby in voice channel because **24/7 Mode is Active**.",

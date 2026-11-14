@@ -165,6 +165,25 @@ const de: TranslationSchema = {
     general_commands: "🛠️ Allgemeine & Server-Befehle",
     buttons_info: "🔘 Interaktive Steuertasten (Now Playing Card)"
   },
+  playlist: {
+    title: "Benutzer-Playlists",
+    created: "Playlist **{name}** erfolgreich erstellt!",
+    deleted: "Playlist **{name}** gelöscht.",
+    not_found: "Playlist **{name}** wurde nicht gefunden.",
+    already_exists: "Du hast bereits eine Playlist namens **{name}**!",
+    limit_reached: "Du hast das Limit von **10 Playlists** erreicht.",
+    track_added: "**[{title}]({uri})** zur Playlist **{name}** hinzugefügt!",
+    track_limit_reached: "Die Playlist **{name}** hat das Limit von **50 Titeln** erreicht.",
+    track_removed: "**{title}** aus Playlist **{name}** entfernt.",
+    invalid_index: "Ungültige Titelnummer!",
+    empty: "Die Playlist **{name}** ist leer.",
+    list_title: "📂 Deine Playlists ({count}/10)",
+    list_empty: "Du hast noch keine Playlists! Erstelle eine mit `/playlist create <Name>`.",
+    view_title: "📂 Playlist: {name} ({count}/50 Titel)",
+    playing: "**{count} Titel** aus Playlist **{name}** werden geladen und abgespielt!",
+    no_tracks_to_play: "Playlist **{name}** kann nicht abgespielt werden, da sie leer ist.",
+    name_invalid: "Der Playlist-Name muss zwischen 1 und 32 Zeichen lang sein."
+  },
   events: {
     queue_end_247_title: "Warteschlange Beendet",
     queue_end_247_desc: "Alle Titel wurden abgespielt. Bot bleibt im Kanal, da **24/7-Modus Aktiv** ist.",

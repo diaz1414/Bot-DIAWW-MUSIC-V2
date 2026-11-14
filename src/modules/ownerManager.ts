@@ -536,6 +536,8 @@ export async function handleOwnerDM(client: DiawwBotClient, message: Message): P
           if (channel) {
             await channel.send({ embeds: [broadcastEmbed] });
             successCount++;
+            // Jeda singkat 200ms untuk mencegah Discord REST Rate Limit (429)
+            await new Promise((r) => setTimeout(r, 200));
           } else {
             failCount++;
           }

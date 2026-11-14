@@ -3,7 +3,7 @@ import path from "node:path";
 
 export interface DatabaseDriver {
   exec(sql: string): void;
-  run(sql: string, ...params: any[]): void;
+  run(sql: string, ...params: any[]): { changes: number; lastInsertRowid: number | bigint } | any;
   get<T = any>(sql: string, ...params: any[]): T | undefined;
   all<T = any>(sql: string, ...params: any[]): T[];
   close(): void;
@@ -39,9 +39,9 @@ export function getDatabase(): DatabaseDriver {
         exec(sql: string): void {
           rawDb.exec(sql);
         },
-        run(sql: string, ...params: any[]): void {
+        run(sql: string, ...params: any[]): any {
           const stmt = rawDb.prepare(sql);
-          stmt.run(...params);
+          return stmt.run(...params);
         },
         get<T = any>(sql: string, ...params: any[]): T | undefined {
           const stmt = rawDb.prepare(sql);
@@ -74,9 +74,9 @@ export function getDatabase(): DatabaseDriver {
       exec(sql: string): void {
         rawDb.exec(sql);
       },
-      run(sql: string, ...params: any[]): void {
+      run(sql: string, ...params: any[]): any {
         const stmt = rawDb.prepare(sql);
-        stmt.run(...params);
+        return stmt.run(...params);
       },
       get<T = any>(sql: string, ...params: any[]): T | undefined {
         const stmt = rawDb.prepare(sql);
