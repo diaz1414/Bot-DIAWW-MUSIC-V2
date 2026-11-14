@@ -65,20 +65,48 @@ const playCommand: Command = {
 
     await interaction.deferReply();
 
+    // Pastikan setidaknya ada 1 node audio yang aktif terhubung
+    const hasConnectedNode = [...client.lavalink.nodeManager.nodes.values()].some((n) => n.connected);
+    if (!hasConnectedNode) {
+      return interaction.editReply({
+        embeds: [
+          createWarningEmbed(
+            t(lang, "common.warning_title"),
+            lang === "id"
+              ? "⚠️ Server audio sedang menghubungkan ulang. Silakan coba kembali dalam beberapa saat (10-15 detik)."
+              : "⚠️ Audio server is currently reconnecting. Please try again in a few moments."
+          )
+        ]
+      });
+    }
+
     const guildSettings = getGuildSettings(guildId);
 
     let player = client.lavalink.getPlayer(guildId);
     if (!player) {
-      player = client.lavalink.createPlayer({
-        guildId: guildId,
-        voiceChannelId: voiceChannel.id,
-        textChannelId: interaction.channelId,
-        selfDeaf: true,
-        selfMute: false,
-        volume: guildSettings.default_volume || 80
-      });
-      player.set("mode_247", guildSettings.mode_247 === 1);
-      player.set("autoplay", true);
+      try {
+        player = client.lavalink.createPlayer({
+          guildId: guildId,
+          voiceChannelId: voiceChannel.id,
+          textChannelId: interaction.channelId,
+          selfDeaf: true,
+          selfMute: false,
+          volume: guildSettings.default_volume || 80
+        });
+        player.set("mode_247", guildSettings.mode_247 === 1);
+        player.set("autoplay", true);
+      } catch (err: any) {
+        return interaction.editReply({
+          embeds: [
+            createWarningEmbed(
+              t(lang, "common.warning_title"),
+              lang === "id"
+                ? "⚠️ Server audio sedang tidak tersedia atau dalam proses rekoneksi. Silakan coba beberapa saat lagi."
+                : "⚠️ Audio server is currently unavailable or reconnecting. Please try again shortly."
+            )
+          ]
+        });
+      }
     }
 
     if (!player.connected) {
@@ -184,21 +212,48 @@ const playCommand: Command = {
       });
     }
 
+    const hasConnectedNode = [...client.lavalink.nodeManager.nodes.values()].some((n) => n.connected);
+    if (!hasConnectedNode) {
+      return message.reply({
+        embeds: [
+          createWarningEmbed(
+            t(lang, "common.warning_title"),
+            lang === "id"
+              ? "⚠️ Server audio sedang menghubungkan ulang. Silakan coba kembali dalam beberapa saat (10-15 detik)."
+              : "⚠️ Audio server is currently reconnecting. Please try again in a few moments."
+          )
+        ]
+      });
+    }
+
     const query = args.join(" ");
     const guildSettings = getGuildSettings(guildId);
 
     let player = client.lavalink.getPlayer(guildId);
     if (!player) {
-      player = client.lavalink.createPlayer({
-        guildId: guildId,
-        voiceChannelId: voiceChannel.id,
-        textChannelId: message.channelId,
-        selfDeaf: true,
-        selfMute: false,
-        volume: guildSettings.default_volume || 80
-      });
-      player.set("mode_247", guildSettings.mode_247 === 1);
-      player.set("autoplay", true);
+      try {
+        player = client.lavalink.createPlayer({
+          guildId: guildId,
+          voiceChannelId: voiceChannel.id,
+          textChannelId: message.channelId,
+          selfDeaf: true,
+          selfMute: false,
+          volume: guildSettings.default_volume || 80
+        });
+        player.set("mode_247", guildSettings.mode_247 === 1);
+        player.set("autoplay", true);
+      } catch (err: any) {
+        return message.reply({
+          embeds: [
+            createWarningEmbed(
+              t(lang, "common.warning_title"),
+              lang === "id"
+                ? "⚠️ Server audio sedang tidak tersedia atau dalam proses rekoneksi. Silakan coba beberapa saat lagi."
+                : "⚠️ Audio server is currently unavailable or reconnecting. Please try again shortly."
+            )
+          ]
+        });
+      }
     }
 
     if (!player.connected) {
