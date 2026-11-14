@@ -63,7 +63,18 @@ export const config: Config = {
     statusInterval: rawConfig.bot?.statusInterval || 30000
   },
   lavalink: {
-    nodes: rawConfig.lavalink?.nodes || [],
+    nodes: (rawConfig.lavalink?.nodes || []).map((node: LavalinkNodeConfig) => {
+      if (node.id === "Private-Lavalink" && process.env.PRIVATE_LAVALINK_HOST) {
+        return {
+          ...node,
+          host: process.env.PRIVATE_LAVALINK_HOST,
+          port: process.env.PRIVATE_LAVALINK_PORT ? parseInt(process.env.PRIVATE_LAVALINK_PORT, 10) : node.port,
+          authorization: process.env.PRIVATE_LAVALINK_PASSWORD || node.authorization,
+          secure: process.env.PRIVATE_LAVALINK_SECURE === "true" ? true : node.secure
+        };
+      }
+      return node;
+    }),
     defaultVolume: rawConfig.lavalink?.defaultVolume || 80,
     maxVolume: rawConfig.lavalink?.maxVolume || 150,
     disconnectTimeout: rawConfig.lavalink?.disconnectTimeout || 60000

@@ -650,7 +650,9 @@ export function initMusicManager(client: DiawwBotClient): LavalinkManager {
   });
 
   manager.nodeManager.on("error", (node, error) => {
-    if (error.message?.includes("ECONNRESET") || error.message?.includes("ETIMEDOUT")) {
+    if (error.message?.includes("ECONNREFUSED")) {
+      console.warn(`[LAVALINK v4] ℹ️ Node '${node.id}' (${node.options.host}:${node.options.port}) belum aktif (Connection Refused). Akan otomatis tersambung saat server online.`);
+    } else if (error.message?.includes("ECONNRESET") || error.message?.includes("ETIMEDOUT")) {
       console.warn(`[LAVALINK v4] ⚠️ Node '${node.id}' jaringan timeout, sedang mencoba ulang...`);
     } else {
       console.error(`[LAVALINK v4] ❌ Error pada node '${node.id}':`, error.message);
