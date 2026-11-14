@@ -61,16 +61,6 @@
         "requestTimeout": 10000
       },
       {
-        "id": "TriniumHost-SSL",
-        "host": "lavalink-v4.triniumhost.com",
-        "port": 443,
-        "authorization": "free",
-        "secure": true,
-        "retryAmount": 50,
-        "retryDelay": 15000,
-        "requestTimeout": 10000
-      },
-      {
         "id": "Serenetia-SSL",
         "host": "lavalinkv4.serenetia.com",
         "port": 443,
