@@ -47,7 +47,7 @@ const autoplayCommand: Command = {
     player.set("autoplay", newStatus);
 
     if (newStatus && player.queue.current) {
-      prepareAutoplayNextTrack(player, client, player.queue.current).catch(() => {});
+      prepareAutoplayNextTrack(player, client, player.queue.current).catch(() => { });
     }
 
     return interaction.reply({
@@ -83,7 +83,7 @@ const autoplayCommand: Command = {
     player.set("autoplay", newStatus);
 
     if (newStatus && player.queue.current) {
-      prepareAutoplayNextTrack(player, client, player.queue.current).catch(() => {});
+      prepareAutoplayNextTrack(player, client, player.queue.current).catch(() => { });
     }
 
     return message.reply({
