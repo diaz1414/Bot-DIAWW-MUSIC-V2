@@ -105,6 +105,11 @@ export function stopSessionPersistence(): void {
  * Memulihkan seluruh sesi musik yang tersimpan setelah bot restart/reboot
  */
 export async function resumeAllPlayerSessions(client: DiawwBotClient): Promise<void> {
+  const hasConnectedNode = [...client.lavalink.nodeManager.nodes.values()].some((n) => n.connected);
+  if (!hasConnectedNode) {
+    return; // Tunggu hingga node audio benar-benar terhubung
+  }
+
   if (hasResumedSessions) return;
   hasResumedSessions = true;
 

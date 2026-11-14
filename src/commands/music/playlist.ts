@@ -273,6 +273,13 @@ const playlistCommand: Command = {
 
         await interaction.deferReply();
 
+        const hasConnectedNode = [...client.lavalink.nodeManager.nodes.values()].some((n) => n.connected);
+        if (!hasConnectedNode) {
+          return interaction.editReply({
+            embeds: [createWarningEmbed(t(lang, "common.warning_title"), lang === "id" ? "⚠️ Server audio sedang menghubungkan ulang. Silakan coba kembali dalam beberapa saat (10-15 detik)." : "⚠️ Audio server is currently reconnecting. Please try again shortly.")]
+          });
+        }
+
         let player = client.lavalink.getPlayer(guildId);
         if (!player) {
           const member = interaction.member as GuildMember;
@@ -363,6 +370,13 @@ const playlistCommand: Command = {
         }
 
         await interaction.deferReply();
+
+        const hasConnectedNode = [...client.lavalink.nodeManager.nodes.values()].some((n) => n.connected);
+        if (!hasConnectedNode) {
+          return interaction.editReply({
+            embeds: [createWarningEmbed(t(lang, "common.warning_title"), lang === "id" ? "⚠️ Server audio sedang menghubungkan ulang. Silakan coba kembali dalam beberapa saat (10-15 detik)." : "⚠️ Audio server is currently reconnecting. Please try again shortly.")]
+          });
+        }
 
         const guildSettings = getGuildSettings(guildId);
         let player = client.lavalink.getPlayer(guildId);
@@ -664,6 +678,13 @@ const playlistCommand: Command = {
           return message.reply({ embeds: [createErrorEmbed(t(lang, "common.error_title"), t(lang, "common.no_voice_channel"))] });
         }
 
+        const hasConnectedNode = [...client.lavalink.nodeManager.nodes.values()].some((n) => n.connected);
+        if (!hasConnectedNode) {
+          return message.reply({
+            embeds: [createWarningEmbed(t(lang, "common.warning_title"), lang === "id" ? "⚠️ Server audio sedang menghubungkan ulang. Silakan coba kembali dalam beberapa saat (10-15 detik)." : "⚠️ Audio server is currently reconnecting. Please try again shortly.")]
+          });
+        }
+
         const guildSettings = getGuildSettings(guildId);
         let player = client.lavalink.getPlayer(guildId);
         if (!player) {
@@ -728,6 +749,13 @@ const playlistCommand: Command = {
         const voiceChannel = member?.voice?.channel;
         if (!voiceChannel) {
           return message.reply({ embeds: [createErrorEmbed(t(lang, "common.error_title"), t(lang, "common.no_voice_channel"))] });
+        }
+
+        const hasConnectedNode = [...client.lavalink.nodeManager.nodes.values()].some((n) => n.connected);
+        if (!hasConnectedNode) {
+          return message.reply({
+            embeds: [createWarningEmbed(t(lang, "common.warning_title"), lang === "id" ? "⚠️ Server audio sedang menghubungkan ulang. Silakan coba kembali dalam beberapa saat (10-15 detik)." : "⚠️ Audio server is currently reconnecting. Please try again shortly.")]
+          });
         }
 
         const tracks = getPlaylistTracks(playlist.id);

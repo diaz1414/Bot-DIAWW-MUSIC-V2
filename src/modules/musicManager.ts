@@ -5,7 +5,8 @@ import {
   EmbedBuilder,
   Message,
   TextChannel,
-  User
+  User,
+  VoiceState
 } from "discord.js";
 import {
   LavalinkManager,
@@ -489,6 +490,12 @@ export async function destroyAndCleanPlayer(player: Player, client: DiawwBotClie
     player.set("disconnect_timeout", null);
   }
 
+  const emptyTimer = player.get<NodeJS.Timeout>("empty_vc_timeout");
+  if (emptyTimer) {
+    clearTimeout(emptyTimer);
+    player.set("empty_vc_timeout", null);
+  }
+
   await cleanOldNowPlayingMessage(player, client);
 
   player.queue.tracks.splice(0, player.queue.tracks.length);
@@ -630,6 +637,58 @@ export function initMusicManager(client: DiawwBotClient): LavalinkManager {
 
   // Forward Voice Gateway events ke Lavalink
   client.on("raw", (d) => manager.sendRawData(d));
+
+  // Voice State Safety: Keluar otomatis jika bot di-kick atau channel kosong (tanpa mode 24/7)
+  client.on("voiceStateUpdate", async (oldState: VoiceState, newState: VoiceState) => {
+    // 1. Jika bot itu sendiri dikeluarkan atau dipindahkan dari Voice Channel
+    if (oldState.id === client.user?.id) {
+      if (!newState.channelId && oldState.channelId) {
+        const player = client.lavalink.getPlayer(oldState.guild.id);
+        if (player) {
+          await destroyAndCleanPlayer(player, client).catch(() => {});
+        }
+      }
+      return;
+    }
+
+    // 2. Jika semua user manusia keluar dari Voice Channel (Channel Kosong)
+    if (oldState.channelId && oldState.channel) {
+      const player = client.lavalink.getPlayer(oldState.guild.id);
+      if (player && player.voiceChannelId === oldState.channelId) {
+        const is247 = player.get("mode_247") === true;
+        if (!is247) {
+          const humanMembers = oldState.channel.members.filter((m) => !m.user.bot);
+          if (humanMembers.size === 0) {
+            let timer = player.get<NodeJS.Timeout>("empty_vc_timeout");
+            if (!timer) {
+              timer = setTimeout(async () => {
+                const currentPl = client.lavalink.getPlayer(oldState.guild.id);
+                if (currentPl && currentPl.voiceChannelId === oldState.channelId) {
+                  const stillEmpty = oldState.channel?.members.filter((m) => !m.user.bot).size === 0;
+                  if (stillEmpty && currentPl.get("mode_247") !== true) {
+                    await destroyAndCleanPlayer(currentPl, client).catch(() => {});
+                  }
+                }
+              }, 60000);
+              player.set("empty_vc_timeout", timer);
+            }
+          }
+        }
+      }
+    }
+
+    // 3. Jika ada manusia masuk kembali ke Voice Channel, batalkan timer disconnect
+    if (newState.channelId && newState.channel) {
+      const player = client.lavalink.getPlayer(newState.guild.id);
+      if (player && player.voiceChannelId === newState.channelId) {
+        const timer = player.get<NodeJS.Timeout>("empty_vc_timeout");
+        if (timer) {
+          clearTimeout(timer);
+          player.set("empty_vc_timeout", null);
+        }
+      }
+    }
+  });
 
   // Pengaman Cold Standby failover timer
   const standbyTimers = new Map<string, NodeJS.Timeout>();
