@@ -44,7 +44,7 @@
         "id": "Private-Lavalink",
         "host": "127.0.0.1",
         "port": 5016,
-        "authorization": "youshallnotpass",
+        "authorization": "diaww14",
         "secure": false,
         "retryAmount": 50,
         "retryDelay": 10000,
