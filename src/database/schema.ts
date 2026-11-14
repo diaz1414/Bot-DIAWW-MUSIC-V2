@@ -30,6 +30,20 @@ export interface PlaylistTrack {
   added_at: string;
 }
 
+export interface PlayerSessionRow {
+  guild_id: string;
+  voice_channel_id: string;
+  text_channel_id: string | null;
+  current_track: string;
+  position: number;
+  queue_tracks: string;
+  volume: number;
+  repeat_mode: string;
+  autoplay: number;
+  mode_247: number;
+  updated_at: number;
+}
+
 export const MAX_USER_PLAYLISTS = 10;
 export const MAX_TRACKS_PER_PLAYLIST = 50;
 
@@ -70,6 +84,21 @@ export function initDatabase(): void {
       FOREIGN KEY(playlist_id) REFERENCES user_playlists(id) ON DELETE CASCADE
     );
     CREATE INDEX IF NOT EXISTS idx_playlist_tracks_playlist ON playlist_tracks(playlist_id);
+
+    CREATE TABLE IF NOT EXISTS player_sessions (
+      guild_id TEXT PRIMARY KEY,
+      voice_channel_id TEXT NOT NULL,
+      text_channel_id TEXT,
+      current_track TEXT NOT NULL,
+      position INTEGER DEFAULT 0,
+      queue_tracks TEXT DEFAULT '[]',
+      volume INTEGER DEFAULT 80,
+      repeat_mode TEXT DEFAULT 'off',
+      autoplay INTEGER DEFAULT 0,
+      mode_247 INTEGER DEFAULT 0,
+      updated_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_player_sessions_updated ON player_sessions(updated_at);
   `);
 
   // Migrasi aman jika database sudah dibuat sebelumnya tanpa kolom language
@@ -79,7 +108,7 @@ export function initDatabase(): void {
     // Abaikan jika kolom sudah ada
   }
 
-  console.log("[DATABASE] Skema database guild_settings & user_playlists berhasil diinisialisasi.");
+  console.log("[DATABASE] Skema database guild_settings, user_playlists & player_sessions berhasil diinisialisasi.");
 }
 
 /**
@@ -331,4 +360,64 @@ export function removeTrackFromPlaylist(
   const target = tracks[trackIndex1Based - 1];
   db.run("DELETE FROM playlist_tracks WHERE id = ?", target.id);
   return { success: true, removedTrack: target };
+}
+
+// ==============================================================================
+// PLAYER SESSION RECOVERY FUNCTIONS (Auto-Resume on Bot Restart / Crash)
+// ==============================================================================
+
+/**
+ * Menyimpan atau memperbarui data sesi pemutaran musik guild ke SQLite
+ */
+export function upsertPlayerSession(session: PlayerSessionRow): void {
+  const db = getDatabase();
+  db.run(
+    `INSERT OR REPLACE INTO player_sessions 
+     (guild_id, voice_channel_id, text_channel_id, current_track, position, queue_tracks, volume, repeat_mode, autoplay, mode_247, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    session.guild_id,
+    session.voice_channel_id,
+    session.text_channel_id,
+    session.current_track,
+    session.position,
+    session.queue_tracks,
+    session.volume,
+    session.repeat_mode,
+    session.autoplay,
+    session.mode_247,
+    session.updated_at
+  );
+}
+
+/**
+ * Memperbarui posisi milidetik terakhir lagu yang sedang diputar
+ */
+export function updatePlayerSessionPosition(guildId: string, position: number): void {
+  const db = getDatabase();
+  db.run(
+    "UPDATE player_sessions SET position = ?, updated_at = ? WHERE guild_id = ?",
+    position,
+    Date.now(),
+    guildId
+  );
+}
+
+/**
+ * Menghapus data sesi pemutaran musik (dipanggil ketika stop manual atau antrean selesai)
+ */
+export function deletePlayerSession(guildId: string): void {
+  const db = getDatabase();
+  db.run("DELETE FROM player_sessions WHERE guild_id = ?", guildId);
+}
+
+/**
+ * Mengambil seluruh sesi pemutaran yang masih aktif (dalam kurun waktu 12 jam terakhir)
+ */
+export function getAllPlayerSessions(): PlayerSessionRow[] {
+  const db = getDatabase();
+  const maxAge = Date.now() - 12 * 60 * 60 * 1000; // Maksimal sesi 12 jam yang lalu
+  return db.all<PlayerSessionRow>(
+    "SELECT * FROM player_sessions WHERE updated_at > ? ORDER BY updated_at DESC",
+    maxAge
+  );
 }

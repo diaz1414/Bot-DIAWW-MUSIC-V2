@@ -2,6 +2,7 @@ import { ActivityType, REST, Routes } from "discord.js";
 import { DiawwBotClient } from "../client";
 import { initDatabase } from "../database/schema";
 import { initMusicManager } from "../modules/musicManager";
+import { startSessionPersistence } from "../modules/sessionManager";
 import { setBotAvatar } from "../utils/embeds";
 
 export default async function onReady(client: DiawwBotClient): Promise<void> {
@@ -32,6 +33,9 @@ export default async function onReady(client: DiawwBotClient): Promise<void> {
     id: client.user!.id,
     username: client.user?.username || "DIAWW MUSIC"
   });
+
+  // Mulai sistem pengaman auto-save posisi musik (Auto-Resume Shield)
+  startSessionPersistence(client);
 
   // 4. Registrasi Slash Commands Global ke Discord API
   try {

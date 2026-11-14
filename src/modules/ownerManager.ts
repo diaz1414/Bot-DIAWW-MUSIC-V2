@@ -14,6 +14,7 @@ import { DiawwBotClient } from "../client";
 import { getDatabase } from "../database/db";
 import { createBaseEmbed, createErrorEmbed, createSuccessEmbed, getBotAvatar } from "../utils/embeds";
 import { formatDuration } from "../utils/time";
+import { saveAllActiveSessions, stopSessionPersistence } from "./sessionManager";
 
 export const DEFAULT_OWNER_ID = "1157912761184026764";
 
@@ -562,20 +563,22 @@ export async function handleOwnerDM(client: DiawwBotClient, message: Message): P
       await message.reply({
         embeds: [
           createSuccessEmbed(
-            "Merestart Bot",
-            "Mempersiapkan graceful restart...\nSemua player akan diputuskan dengan rapi dan proses bot akan restart otomatis dalam hitungan detik."
+            "Merestart Bot (Auto-Resume Shield)",
+            "Mempersiapkan graceful restart...\nSeluruh sesi pemutar musik aktif disimpan otomatis ke database dan akan langsung dilanjutkan pada detik yang sama setelah bot hidup kembali."
           )
         ]
       });
 
       console.log("[OWNER ACTION] Restart diperintahkan oleh Owner via DM!");
 
-      // Disconnect players
+      // Simpan seluruh sesi musik aktif
+      saveAllActiveSessions(client);
+      stopSessionPersistence();
+
       if (client.lavalink) {
         client.lavalink.players.forEach((p) => {
           try {
             p.disconnect();
-            p.destroy("Restarting bot");
           } catch {}
         });
       }

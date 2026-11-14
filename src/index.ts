@@ -1,6 +1,7 @@
 import { DiawwBotClient } from "./client";
 import { validateConfig } from "./config";
 import { getDatabase } from "./database/db";
+import { saveAllActiveSessions, stopSessionPersistence } from "./modules/sessionManager";
 
 // ==============================================================================
 // 1. SISTEM ANTI-CRASH GLOBAL (Menjaga Bot Tetap Hidup 24/7 Tanpa Down)
@@ -43,11 +44,14 @@ async function bootstrap(): Promise<void> {
   const shutdown = async (signal: string) => {
     console.log(`\n[SHUTDOWN] Menerima sinyal ${signal}. Menutup koneksi bot...`);
     try {
+      // Simpan seluruh sesi musik aktif agar otomatis dilanjutkan di menit yang sama saat bot hidup lagi
+      saveAllActiveSessions(client);
+      stopSessionPersistence();
+
       if (client.lavalink) {
         client.lavalink.players.forEach((player) => {
           try {
             player.disconnect();
-            player.destroy("Bot shutdown");
           } catch {}
         });
       }

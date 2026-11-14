@@ -15,8 +15,9 @@ import {
 } from "lavalink-client";
 import { DiawwBotClient } from "../client";
 import { config } from "../config";
-import { getGuildLanguage, getGuildSettings } from "../database/schema";
+import { deletePlayerSession, getGuildLanguage, getGuildSettings } from "../database/schema";
 import { t } from "../i18n";
+import { resumeAllPlayerSessions, saveCurrentPlayerSession } from "./sessionManager";
 import { createBaseEmbed, createInfoEmbed, createWarningEmbed, getBotAvatar } from "../utils/embeds";
 import { createProgressBar, formatDuration } from "../utils/time";
 
@@ -480,6 +481,8 @@ export async function cleanOldNowPlayingMessage(player: Player, client: DiawwBot
  * Menghancurkan player secara instan, keluar dari voice channel, dan bersihkan pesan kartu pemutar
  */
 export async function destroyAndCleanPlayer(player: Player, client: DiawwBotClient): Promise<void> {
+  deletePlayerSession(player.guildId);
+
   const timer = player.get<NodeJS.Timeout>("disconnect_timeout");
   if (timer) {
     clearTimeout(timer);
@@ -621,6 +624,13 @@ export function initMusicManager(client: DiawwBotClient): LavalinkManager {
   manager.nodeManager.on("connect", async (node) => {
     console.log(`[LAVALINK v4] ✅ Node '${node.id}' (${node.options.host}:${node.options.port}) BERHASIL TERHUBUNG!`);
 
+    // Pulihkan sesi pemutaran otomatis jika bot baru saja restart
+    setTimeout(() => {
+      resumeAllPlayerSessions(client).catch((err) => {
+        console.error("[AUTO-RESUME] Gagal memulihkan sesi pemutar:", err);
+      });
+    }, 1500);
+
     // Pemulihan otomatis jika ada player aktif yang terhenti saat node sebelumnya down
     const strandedPlayers = Array.from(manager.players.values()).filter(
       (p) => (!p.node || !p.node.connected) && (p.queue.current || p.queue.tracks.length > 0)
@@ -696,6 +706,9 @@ export function initMusicManager(client: DiawwBotClient): LavalinkManager {
 
     recordPlayedTrack(player, track);
 
+    // Simpan status sesi pemutar ke SQLite untuk pemulihan otomatis jika bot restart
+    saveCurrentPlayerSession(player);
+
     const isAutoplay = (track as ExtendedTrack).isAutoplay === true;
     player.set("current_is_autoplay", isAutoplay);
 
@@ -746,6 +759,7 @@ export function initMusicManager(client: DiawwBotClient): LavalinkManager {
     }
 
     // 2. Cek Mode 24/7
+    deletePlayerSession(player.guildId);
     const guildSettings = getGuildSettings(player.guildId);
     const is247 = player.get("mode_247") === true || guildSettings.mode_247 === 1;
 
