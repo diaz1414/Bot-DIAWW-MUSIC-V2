@@ -22,6 +22,8 @@ export interface LavalinkNodeConfig {
   retryAmount?: number;
   retryDelay?: number;
   requestTimeout?: number;
+  standby?: boolean;
+  standbyFor?: string;
 }
 
 export interface BotConfig {

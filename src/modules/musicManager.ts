@@ -570,11 +570,15 @@ export async function smartSearch(
 }
 
 /**
- * Inisialisasi LavalinkManager v4 dengan 2 node Serenetia, auto-failover, dan auto-reconnect tanpa henti
+ * Inisialisasi LavalinkManager v4 dengan sistem Smart Cold Standby Failover Guard
  */
 export function initMusicManager(client: DiawwBotClient): LavalinkManager {
+  // Pisahkan node aktif dan node siaga (Cold Standby)
+  const activeNodeConfigs = config.lavalink.nodes.filter((n) => !n.standby);
+  const standbyNodeConfigs = config.lavalink.nodes.filter((n) => n.standby);
+
   const manager = new LavalinkManager({
-    nodes: config.lavalink.nodes.map((node) => ({
+    nodes: activeNodeConfigs.map((node) => ({
       id: node.id,
       host: node.host,
       port: node.port,
@@ -617,12 +621,38 @@ export function initMusicManager(client: DiawwBotClient): LavalinkManager {
     }
   });
 
+  // Beritahu log tentang node siaga (Cold Standby)
+  for (const standby of standbyNodeConfigs) {
+    console.log(
+      `[LAVALINK SHIELD] 🛡️ Node '${standby.id}' (${standby.host}:${standby.port}) disiagakan dalam mode Cold Standby (pengaman untuk '${standby.standbyFor || "utama"}'). Koneksi ditahan agar tidak terjadi rate-limit.`
+    );
+  }
+
   // Forward Voice Gateway events ke Lavalink
   client.on("raw", (d) => manager.sendRawData(d));
+
+  // Pengaman Cold Standby failover timer
+  const standbyTimers = new Map<string, NodeJS.Timeout>();
 
   // Node Manager Events: Koneksi, Rekoneksi, dan Failover Otomatis
   manager.nodeManager.on("connect", async (node) => {
     console.log(`[LAVALINK v4] ✅ Node '${node.id}' (${node.options.host}:${node.options.port}) BERHASIL TERHUBUNG!`);
+
+    // Batalkan timer aktivasi standby jika node utama sudah connect
+    const matchingStandbys = standbyNodeConfigs.filter((s) => s.standbyFor === node.id);
+    for (const standby of matchingStandbys) {
+      const timer = standbyTimers.get(standby.id);
+      if (timer) {
+        clearTimeout(timer);
+        standbyTimers.delete(standby.id);
+      }
+
+      // Jika node backup sempat menyala saat node utama mati, sekarang matikan backup kembali ke mode siaga
+      if (manager.nodeManager.nodes.has(standby.id)) {
+        console.log(`[LAVALINK SHIELD] 🛡️ Node utama '${node.id}' telah pulih! Memutus dan mengembalikan '${standby.id}' ke mode siaga (Cold Standby) agar tidak bentrok.`);
+        manager.nodeManager.deleteNode(standby.id);
+      }
+    }
 
     // Pulihkan sesi pemutaran otomatis jika bot baru saja restart
     setTimeout(() => {
@@ -641,6 +671,40 @@ export function initMusicManager(client: DiawwBotClient): LavalinkManager {
       console.warn(`[LAVALINK v4] ⚠️ Node '${node.id}' terkena pembatasan frekuensi publik (Code 4000: Rate Limit). Bot menunggu cooldown sebelum rekoneksi.`);
     } else {
       console.warn(`[LAVALINK v4] ⚠️ Node '${node.id}' terputus. Alasan:`, reason?.reason || reason?.code || "Koneksi jaringan terputus");
+    }
+
+    // Cek apakah ada node standby yang bertugas meng-cover node yang mati ini
+    const matchingStandbys = standbyNodeConfigs.filter((s) => s.standbyFor === node.id);
+    for (const standby of matchingStandbys) {
+      if (standbyTimers.has(standby.id)) continue;
+
+      // Berikan grace period 10 detik. Jika node utama benar-benar mati / belum pulih, aktifkan backup
+      const timer = setTimeout(() => {
+        standbyTimers.delete(standby.id);
+
+        const primaryNode = manager.nodeManager.nodes.get(node.id);
+        const isPrimaryConnected = primaryNode && primaryNode.connected;
+
+        // Jika node utama masih belum terkoneksi, dan backup belum dibuat
+        if (!isPrimaryConnected && !manager.nodeManager.nodes.has(standby.id)) {
+          console.warn(`[LAVALINK SHIELD] 🚨 Node utama '${node.id}' terputus & tidak kunjung pulih! Mengaktifkan Backup Darurat '${standby.id}' (${standby.host}:${standby.port})...`);
+          const created = manager.nodeManager.createNode({
+            id: standby.id,
+            host: standby.host,
+            port: standby.port,
+            authorization: standby.authorization,
+            secure: standby.secure,
+            retryAmount: standby.retryAmount || 50,
+            retryDelay: standby.retryDelay || 15000,
+            requestSignalTimeoutMS: standby.requestTimeout || 10000,
+            heartBeatInterval: 15000,
+            enablePingOnStatsCheck: true
+          });
+          created.connect();
+        }
+      }, 10000);
+
+      standbyTimers.set(standby.id, timer);
     }
   });
 
