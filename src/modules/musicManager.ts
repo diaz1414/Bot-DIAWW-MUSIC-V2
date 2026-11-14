@@ -514,10 +514,43 @@ export async function destroyAndCleanPlayer(player: Player, client: DiawwBotClie
 }
 
 /**
- * Sistem Pencarian Cerdas Multi-Tier:
+ * Membersihkan query pencarian pengguna agar ramah dengan search engine Spotify & streaming:
+ * Menghapus tanda petik, tag live/vma/performance/official video, kurung noise, dan tahun 4-digit
+ */
+export function cleanSearchQuery(query: string): string {
+  if (!query) return "";
+  let clean = query;
+
+  // Hapus tanda kutip dan tanda petik
+  clean = clean.replace(/["'“”‘’`]/g, " ");
+
+  // Hapus kurung dan isinya jika memuat noise video/live
+  clean = clean.replace(/[\(\[\{][^\)\]\}]*(?:official|video|audio|lyrics|lyric|remaster|hd|4k|mv|live|perform|vma|concert|tour)[^\)\]\}]*[\)\]\}]/gi, " ");
+  // Hapus kurung umum
+  clean = clean.replace(/[\(\[\{\)\]\}]/g, " ");
+
+  // Hapus kata-kata noise video/konser/acara TV umum
+  clean = clean.replace(/\b(?:perform|performance|vma|vmas|live at|live|official video|official audio|music video|lyric video|lyrics|remastered|remaster|hd|4k|mv|visualizer|audio|full video)\b/gi, " ");
+
+  // Hapus tahun 4 digit (misal 2024, 2025, 2026)
+  clean = clean.replace(/\b(?:19|20)\d{2}\b/g, " ");
+
+  // Hapus pemisah seperti |, /, \, ~, _
+  clean = clean.replace(/[|/\\~_]/g, " ");
+
+  // Rapikan spasi berlebih
+  return clean.replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Sistem Pencarian Cerdas Multi-Tier Berbasis Prioritas Spotify:
  * 1. Jika URL -> langsung cari via link asli
  * 2. Jika judul teks dengan preferredPlatform -> cari sesuai platform tersebut
- * 3. Jika judul teks mode Auto -> Spotify (spsearch:) -> YouTube (ytsearch:) -> Platform lain
+ * 3. Jika judul teks mode Auto (Default):
+ *    a. Prioritaskan SPOTIFY (spsearch:) dengan query asli di player.node
+ *    b. Jika kosong / error, coba SPOTIFY dengan query bersih (cleanSearchQuery)
+ *    c. Jika player.node gagal/kosong, coba SPOTIFY di seluruh node terhubung lainnya (failover multi-node)
+ *    d. Hanya jika Spotify benar-benar nihil di semua node, baru beralih ke YouTube -> Apple Music -> Deezer -> dll.
  */
 export async function smartSearch(
   player: Player,
@@ -546,14 +579,60 @@ export async function smartSearch(
     };
 
     const prefix = platformPrefixMap[preferredPlatform.toLowerCase()] || "spsearch:";
-    const res = await player.search({ query: `${prefix}${trimmed}` }, user);
-    return res as SearchResult;
+    try {
+      const res = await player.search({ query: `${prefix}${trimmed}` }, user);
+      if (res && res.tracks && res.tracks.length > 0) return res as SearchResult;
+    } catch {}
+
+    const cleaned = cleanSearchQuery(trimmed);
+    if (cleaned && cleaned.toLowerCase() !== trimmed.toLowerCase()) {
+      try {
+        const res = await player.search({ query: `${prefix}${cleaned}` }, user);
+        if (res && res.tracks && res.tracks.length > 0) return res as SearchResult;
+      } catch {}
+    }
+    return null;
   }
 
-  // 3. Multi-Tier Search (Mode Auto)
-  // Urutan fallback: Spotify -> YouTube -> Apple Music -> Deezer -> SoundCloud -> YouTube Music -> Yandex
-  const tiers = [
-    { name: "Spotify", prefix: "spsearch:" },
+  // 3. Mode Auto: PRIORITAS UTAMA SPOTIFY
+  const cleaned = cleanSearchQuery(trimmed);
+  const spotifyQueries = [trimmed];
+  if (cleaned && cleaned.toLowerCase() !== trimmed.toLowerCase()) {
+    spotifyQueries.push(cleaned);
+  }
+
+  // 3a. Coba cari di node aktif player saat ini
+  for (const sq of spotifyQueries) {
+    try {
+      const res = await player.search({ query: `spsearch:${sq}` }, user);
+      if (res && res.tracks && res.tracks.length > 0) {
+        return res as SearchResult;
+      }
+    } catch {}
+  }
+
+  // 3b. Jika node saat ini gagal (misal rate-limit atau plugin issue), cari Spotify di node aktif lain
+  const altNodes = [...player.LavalinkManager.nodeManager.nodes.values()].filter(
+    (n) => n.connected && n.id !== player.node.id
+  );
+
+  for (const altNode of altNodes) {
+    for (const sq of spotifyQueries) {
+      try {
+        const altRes = await altNode.search({ query: `spsearch:${sq}` }, user);
+        if (altRes && altRes.tracks && altRes.tracks.length > 0) {
+          // Ganti player ke node yang berhasil menemukan Spotify secara mulus
+          try {
+            await player.changeNode(altNode, false);
+          } catch {}
+          return altRes as SearchResult;
+        }
+      } catch {}
+    }
+  }
+
+  // 4. Fallback Tiers: Hanya jika Spotify benar-benar tidak memiliki hasil di semua node
+  const fallbackTiers = [
     { name: "YouTube", prefix: "ytsearch:" },
     { name: "Apple Music", prefix: "amsearch:" },
     { name: "Deezer", prefix: "dzsearch:" },
@@ -562,14 +641,21 @@ export async function smartSearch(
     { name: "Yandex", prefix: "ymsearch:" }
   ];
 
-  for (const tier of tiers) {
+  for (const tier of fallbackTiers) {
     try {
       const res = await player.search({ query: `${tier.prefix}${trimmed}` }, user);
       if (res && res.tracks && res.tracks.length > 0) {
         return res as SearchResult;
       }
-    } catch (err) {
-      continue;
+    } catch {}
+
+    if (cleaned && cleaned.toLowerCase() !== trimmed.toLowerCase()) {
+      try {
+        const res = await player.search({ query: `${tier.prefix}${cleaned}` }, user);
+        if (res && res.tracks && res.tracks.length > 0) {
+          return res as SearchResult;
+        }
+      } catch {}
     }
   }
 

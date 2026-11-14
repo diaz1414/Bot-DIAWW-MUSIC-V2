@@ -399,7 +399,7 @@ const playlistCommand: Command = {
         let addedCount = 0;
         for (const trk of tracks) {
           try {
-            const res = await player.search({ query: trk.uri || trk.title }, interaction.user);
+            const res = await smartSearch(player, trk.uri || trk.title, interaction.user);
             if (res && res.tracks && res.tracks.length > 0) {
               player.queue.add(res.tracks[0]);
               addedCount++;
@@ -786,7 +786,7 @@ const playlistCommand: Command = {
         let addedCount = 0;
         for (const trk of tracks) {
           try {
-            const res = await player.search({ query: trk.uri || trk.title }, message.author);
+            const res = await smartSearch(player, trk.uri || trk.title, message.author);
             if (res && res.tracks && res.tracks.length > 0) {
               player.queue.add(res.tracks[0]);
               addedCount++;
