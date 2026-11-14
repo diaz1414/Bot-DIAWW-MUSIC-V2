@@ -5,6 +5,7 @@ import {
   Interaction,
   TextChannel
 } from "discord.js";
+import { Track } from "lavalink-client";
 import { DiawwBotClient } from "../client";
 import { getGuildLanguage, setGuild247, setGuildDefaultVolume } from "../database/schema";
 import { t } from "../i18n";
@@ -13,6 +14,7 @@ import {
   buildNowPlayingEmbed,
   buildQueueEmbed,
   destroyAndCleanPlayer,
+  ExtendedTrack,
   prepareAutoplayNextTrack
 } from "../modules/musicManager";
 import { handleOwnerButton } from "../modules/ownerManager";
@@ -65,7 +67,18 @@ export default async function onInteractionCreate(
       await handleOwnerButton(client, interaction);
       return;
     }
-    await handleButtonInteraction(client, interaction);
+    try {
+      await handleButtonInteraction(client, interaction);
+    } catch (btnErr) {
+      console.error(`[BUTTON ERROR] Terjadi error pada tombol ${interaction.customId}:`, btnErr);
+      if (!interaction.replied && !interaction.deferred) {
+        const lang = getGuildLanguage(interaction.guildId || "");
+        await interaction.reply({
+          embeds: [createErrorEmbed(t(lang, "common.error_title"), t(lang, "common.system_error"))],
+          ephemeral: true
+        }).catch(() => {});
+      }
+    }
   }
 }
 
@@ -133,7 +146,22 @@ async function handleButtonInteraction(
       }
 
       const skipped = player.queue.current.info.title;
-      await player.skip();
+
+      // Jika antrean manual kosong tapi Autoplay aktif, segera masukkan lagu autoplay berikutnya
+      if (player.queue.tracks.length === 0 && player.get("autoplay") === true) {
+        const autoNext = player.get<Track>("autoplay_next_track");
+        if (autoNext) {
+          player.set("autoplay_next_track", null);
+          (autoNext as ExtendedTrack).isAutoplay = true;
+          player.queue.add(autoNext);
+        }
+      }
+
+      try {
+        await player.skip(0, false);
+      } catch (skipErr) {
+        await player.stopPlaying(true, false).catch(() => {});
+      }
 
       await interaction.reply({
         embeds: [

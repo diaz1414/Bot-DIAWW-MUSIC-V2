@@ -4,9 +4,11 @@ import {
   Message,
   SlashCommandBuilder
 } from "discord.js";
+import { Track } from "lavalink-client";
 import { Command, DiawwBotClient } from "../../client";
 import { getGuildLanguage } from "../../database/schema";
 import { t } from "../../i18n";
+import { ExtendedTrack } from "../../modules/musicManager";
 import { createErrorEmbed, createSuccessEmbed } from "../../utils/embeds";
 
 const slashData = new SlashCommandBuilder()
@@ -42,7 +44,22 @@ const skipCommand: Command = {
     }
 
     const skippedTitle = player.queue.current.info.title;
-    await player.skip();
+
+    // Jika antrean kosong tapi Autoplay aktif, masukkan lagu autoplay berikutnya langsung
+    if (player.queue.tracks.length === 0 && player.get("autoplay") === true) {
+      const autoNext = player.get<Track>("autoplay_next_track");
+      if (autoNext) {
+        player.set("autoplay_next_track", null);
+        (autoNext as ExtendedTrack).isAutoplay = true;
+        player.queue.add(autoNext);
+      }
+    }
+
+    try {
+      await player.skip(0, false);
+    } catch {
+      await player.stopPlaying(true, false).catch(() => {});
+    }
 
     return interaction.reply({
       embeds: [
@@ -73,7 +90,22 @@ const skipCommand: Command = {
     }
 
     const skippedTitle = player.queue.current.info.title;
-    await player.skip();
+
+    // Jika antrean kosong tapi Autoplay aktif, masukkan lagu autoplay berikutnya langsung
+    if (player.queue.tracks.length === 0 && player.get("autoplay") === true) {
+      const autoNext = player.get<Track>("autoplay_next_track");
+      if (autoNext) {
+        player.set("autoplay_next_track", null);
+        (autoNext as ExtendedTrack).isAutoplay = true;
+        player.queue.add(autoNext);
+      }
+    }
+
+    try {
+      await player.skip(0, false);
+    } catch {
+      await player.stopPlaying(true, false).catch(() => {});
+    }
 
     return message.reply({
       embeds: [
