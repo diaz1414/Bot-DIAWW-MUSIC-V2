@@ -26,18 +26,8 @@
         "port": 443,
         "authorization": "https://seretia.link/discord",
         "secure": true,
-        "retryAmount": 100,
-        "retryDelay": 3000,
-        "requestTimeout": 10000
-      },
-      {
-        "id": "Serenetia-NonSSL",
-        "host": "lavalinkv4.serenetia.com",
-        "port": 80,
-        "authorization": "https://seretia.link/discord",
-        "secure": false,
-        "retryAmount": 100,
-        "retryDelay": 3000,
+        "retryAmount": 50,
+        "retryDelay": 10000,
         "requestTimeout": 10000
       }
     ],

@@ -630,58 +630,17 @@ export function initMusicManager(client: DiawwBotClient): LavalinkManager {
         console.error("[AUTO-RESUME] Gagal memulihkan sesi pemutar:", err);
       });
     }, 1500);
-
-    // Pemulihan otomatis jika ada player aktif yang terhenti saat node sebelumnya down
-    const strandedPlayers = Array.from(manager.players.values()).filter(
-      (p) => (!p.node || !p.node.connected) && (p.queue.current || p.queue.tracks.length > 0)
-    );
-    for (const player of strandedPlayers) {
-      console.log(`[LAVALINK RECOVERY] 🔄 Memulihkan pemutaran lagu Guild ${player.guildId} ke node '${node.id}'...`);
-      try {
-        await player.changeNode(node);
-        if (!player.playing && player.queue.current) {
-          await player.play();
-        }
-      } catch (recErr) {
-        console.error(`[LAVALINK RECOVERY] ❌ Gagal memulihkan player Guild ${player.guildId}:`, recErr);
-      }
-    }
   });
 
   manager.nodeManager.on("reconnecting", (node) => {
     console.log(`[LAVALINK v4] 🔄 Node '${node.id}' sedang mencoba menyambung kembali (reconnecting)...`);
   });
 
-  manager.nodeManager.on("reconnectinprogress", (node) => {
-    console.log(`[LAVALINK v4] ⏳ Proses auto-reconnect aktif untuk node '${node.id}'...`);
-  });
-
   manager.nodeManager.on("disconnect", async (node, reason) => {
-    console.warn(`[LAVALINK v4] ⚠️ Node '${node.id}' terputus. Alasan:`, reason);
-
-    // Auto-Failover Safeguard: Cek apakah ada node sehat cadangan
-    const healthyNodes = Array.from(manager.nodeManager.nodes.values()).filter(
-      (n) => n.id !== node.id && n.connected && !!n.sessionId
-    );
-
-    if (healthyNodes.length > 0) {
-      const targetNode = healthyNodes[0];
-      const affectedPlayers = Array.from(manager.players.values()).filter(
-        (p) => p.node?.id === node.id && (p.playing || p.queue.current)
-      );
-
-      for (const player of affectedPlayers) {
-        if (player.getData("internal_nodeChanging") !== true) {
-          console.log(`[LAVALINK FAILOVER] 🔀 Memindahkan audio Guild ${player.guildId} dari '${node.id}' ke node cadangan '${targetNode.id}'...`);
-          try {
-            await player.changeNode(targetNode);
-          } catch (failoverErr) {
-            console.error(`[LAVALINK FAILOVER] ❌ Gagal memindahkan audio Guild ${player.guildId}:`, failoverErr);
-          }
-        }
-      }
+    if (reason && (reason.code === 4000 || (reason.reason && reason.reason.includes("Too many websocket")))) {
+      console.warn(`[LAVALINK v4] ⚠️ Node '${node.id}' terkena pembatasan frekuensi publik (Code 4000: Rate Limit). Bot menunggu cooldown sebelum rekoneksi.`);
     } else {
-      console.warn(`[LAVALINK FAILOVER] ⚠️ Seluruh node Lavalink sedang offline. Menunggu proses auto-reconnect...`);
+      console.warn(`[LAVALINK v4] ⚠️ Node '${node.id}' terputus. Alasan:`, reason?.reason || reason?.code || "Koneksi jaringan terputus");
     }
   });
 
@@ -691,7 +650,11 @@ export function initMusicManager(client: DiawwBotClient): LavalinkManager {
   });
 
   manager.nodeManager.on("error", (node, error) => {
-    console.error(`[LAVALINK v4] ❌ Error pada node '${node.id}':`, error.message);
+    if (error.message?.includes("ECONNRESET") || error.message?.includes("ETIMEDOUT")) {
+      console.warn(`[LAVALINK v4] ⚠️ Node '${node.id}' jaringan timeout, sedang mencoba ulang...`);
+    } else {
+      console.error(`[LAVALINK v4] ❌ Error pada node '${node.id}':`, error.message);
+    }
   });
 
   // Player Event: trackStart
