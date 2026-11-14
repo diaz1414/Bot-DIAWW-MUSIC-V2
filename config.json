@@ -21,18 +21,8 @@
   "lavalink": {
     "nodes": [
       {
-        "id": "Serenetia-SSL",
-        "host": "lavalinkv4.serenetia.com",
-        "port": 443,
-        "authorization": "https://seretia.link/discord",
-        "secure": true,
-        "retryAmount": 50,
-        "retryDelay": 15000,
-        "requestTimeout": 10000
-      },
-      {
         "id": "Private-Lavalink",
-        "host": "127.0.0.1",
+        "host": "eu1-node.diaww.my.id",
         "port": 5016,
         "authorization": "diaww14",
         "secure": false,
@@ -41,12 +31,12 @@
         "requestTimeout": 10000
       },
       {
-        "id": "Serenetia-NonSSL",
+        "id": "Serenetia-SSL",
         "host": "lavalinkv4.serenetia.com",
-        "port": 80,
+        "port": 443,
         "authorization": "https://seretia.link/discord",
-        "secure": false,
-        "retryAmount": 30,
+        "secure": true,
+        "retryAmount": 50,
         "retryDelay": 15000,
         "requestTimeout": 10000
       }
