@@ -634,6 +634,21 @@ export function initMusicManager(client: DiawwBotClient): LavalinkManager {
   // Pengaman Cold Standby failover timer
   const standbyTimers = new Map<string, NodeJS.Timeout>();
 
+  // Flag auto-resume satu kali saat bot boot
+  let initialResumeDone = false;
+
+  // Anti-Spam Log Throttler: Mencegah konsol banjir log saat ada node publik yang labil
+  const lastLogTime = new Map<string, number>();
+  const shouldLog = (key: string, cooldownMs = 60000): boolean => {
+    const now = Date.now();
+    const last = lastLogTime.get(key) || 0;
+    if (now - last > cooldownMs) {
+      lastLogTime.set(key, now);
+      return true;
+    }
+    return false;
+  };
+
   // Node Manager Events: Koneksi, Rekoneksi, dan Failover Otomatis
   manager.nodeManager.on("connect", async (node) => {
     console.log(`[LAVALINK v4] ✅ Node '${node.id}' (${node.options.host}:${node.options.port}) BERHASIL TERHUBUNG!`);
@@ -654,23 +669,32 @@ export function initMusicManager(client: DiawwBotClient): LavalinkManager {
       }
     }
 
-    // Pulihkan sesi pemutaran otomatis jika bot baru saja restart
-    setTimeout(() => {
-      resumeAllPlayerSessions(client).catch((err) => {
-        console.error("[AUTO-RESUME] Gagal memulihkan sesi pemutar:", err);
-      });
-    }, 1500);
+    // Pulihkan sesi pemutaran HANYA SATU KALI saat pertama kali ada node yang terhubung pasca-boot
+    if (!initialResumeDone) {
+      initialResumeDone = true;
+      setTimeout(() => {
+        resumeAllPlayerSessions(client).catch((err) => {
+          console.error("[AUTO-RESUME] Gagal memulihkan sesi pemutar:", err);
+        });
+      }, 1500);
+    }
   });
 
   manager.nodeManager.on("reconnecting", (node) => {
-    console.log(`[LAVALINK v4] 🔄 Node '${node.id}' sedang mencoba menyambung kembali (reconnecting)...`);
+    if (shouldLog(`reconnect_${node.id}`, 60000)) {
+      console.log(`[LAVALINK v4] 🔄 Node '${node.id}' sedang mencoba menyambung kembali di background...`);
+    }
   });
 
   manager.nodeManager.on("disconnect", async (node, reason) => {
     if (reason && (reason.code === 4000 || (reason.reason && reason.reason.includes("Too many websocket")))) {
-      console.warn(`[LAVALINK v4] ⚠️ Node '${node.id}' terkena pembatasan frekuensi publik (Code 4000: Rate Limit). Bot menunggu cooldown sebelum rekoneksi.`);
+      if (shouldLog(`ratelimit_${node.id}`, 120000)) {
+        console.warn(`[LAVALINK v4] ⚠️ Node '${node.id}' terkena pembatasan publik (Rate Limit). Beristirahat sejenak di background.`);
+      }
     } else {
-      console.warn(`[LAVALINK v4] ⚠️ Node '${node.id}' terputus. Alasan:`, reason?.reason || reason?.code || "Koneksi jaringan terputus");
+      if (shouldLog(`disconnect_${node.id}`, 60000)) {
+        console.warn(`[LAVALINK v4] ⚠️ Node '${node.id}' terputus (${reason?.reason || reason?.code || "Jaringan terputus"}).`);
+      }
     }
 
     // Cek apakah ada node standby yang bertugas meng-cover node yang mati ini
@@ -714,12 +738,14 @@ export function initMusicManager(client: DiawwBotClient): LavalinkManager {
   });
 
   manager.nodeManager.on("error", (node, error) => {
-    if (error.message?.includes("ECONNREFUSED")) {
-      console.warn(`[LAVALINK v4] ℹ️ Node '${node.id}' (${node.options.host}:${node.options.port}) belum aktif (Connection Refused). Akan otomatis tersambung saat server online.`);
-    } else if (error.message?.includes("ECONNRESET") || error.message?.includes("ETIMEDOUT")) {
-      console.warn(`[LAVALINK v4] ⚠️ Node '${node.id}' jaringan timeout, sedang mencoba ulang...`);
-    } else {
-      console.error(`[LAVALINK v4] ❌ Error pada node '${node.id}':`, error.message);
+    if (shouldLog(`error_${node.id}_${error.message}`, 60000)) {
+      if (error.message?.includes("ECONNREFUSED")) {
+        console.warn(`[LAVALINK v4] ℹ️ Node '${node.id}' (${node.options.host}:${node.options.port}) belum aktif (Connection Refused).`);
+      } else if (error.message?.includes("ECONNRESET") || error.message?.includes("ETIMEDOUT") || error.message?.includes("ENOTFOUND")) {
+        console.warn(`[LAVALINK v4] ⚠️ Node '${node.id}' jaringan timeout/gagal resolve, mencoba rekoneksi di background.`);
+      } else {
+        console.error(`[LAVALINK v4] ❌ Error pada node '${node.id}':`, error.message);
+      }
     }
   });
 
