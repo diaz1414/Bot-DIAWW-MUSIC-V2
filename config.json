@@ -21,21 +21,21 @@
   "lavalink": {
     "nodes": [
       {
-        "id": "TriniumHost-SSL",
-        "host": "lavalink-v4.triniumhost.com",
+        "id": "Nazha-Main",
+        "host": "lavalink.nazha.online",
         "port": 443,
-        "authorization": "free",
+        "authorization": "nazhafreelava",
         "secure": true,
         "retryAmount": 50,
         "retryDelay": 15000,
         "requestTimeout": 10000
       },
       {
-        "id": "Nazha-Main",
-        "host": "lavalink.nazha.online",
-        "port": 443,
-        "authorization": "nazhafreelava",
-        "secure": true,
+        "id": "GDjkhp-Nodelink",
+        "host": "nodelink.gdjkhp.com",
+        "port": 3000,
+        "authorization": "youshallnotpass",
+        "secure": false,
         "retryAmount": 50,
         "retryDelay": 15000,
         "requestTimeout": 10000
@@ -56,6 +56,16 @@
         "port": 2334,
         "authorization": "youshallnotpass",
         "secure": false,
+        "retryAmount": 50,
+        "retryDelay": 15000,
+        "requestTimeout": 10000
+      },
+      {
+        "id": "TriniumHost-SSL",
+        "host": "lavalink-v4.triniumhost.com",
+        "port": 443,
+        "authorization": "free",
+        "secure": true,
         "retryAmount": 50,
         "retryDelay": 15000,
         "requestTimeout": 10000
