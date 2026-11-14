@@ -678,8 +678,8 @@ export function initMusicManager(client: DiawwBotClient): LavalinkManager {
       authorization: node.authorization,
       secure: node.secure,
       retryAmount: node.retryAmount || 100,
-      retryDelay: node.retryDelay || 3000,
-      requestTimeout: node.requestTimeout || 10000,
+      retryDelay: node.retryDelay || 15000,
+      requestSignalTimeoutMS: node.requestTimeout || 20000,
       heartBeatInterval: 15000,
       enablePingOnStatsCheck: true
     })),
@@ -810,7 +810,15 @@ export function initMusicManager(client: DiawwBotClient): LavalinkManager {
       // Jika node backup sempat menyala saat node utama mati, sekarang matikan backup kembali ke mode siaga
       if (manager.nodeManager.nodes.has(standby.id)) {
         console.log(`[LAVALINK SHIELD] 🛡️ Node utama '${node.id}' telah pulih! Memutus dan mengembalikan '${standby.id}' ke mode siaga (Cold Standby) agar tidak bentrok.`);
-        manager.nodeManager.deleteNode(standby.id);
+        try {
+          const playersOnStandby = [...manager.players.values()].filter((p) => p.node?.id === standby.id);
+          for (const pl of playersOnStandby) {
+            try {
+              await pl.changeNode(node.id, false);
+            } catch {}
+          }
+          await manager.nodeManager.deleteNode(standby.id);
+        } catch {}
       }
     }
 

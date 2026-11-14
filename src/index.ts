@@ -8,6 +8,21 @@ import { saveAllActiveSessions, stopSessionPersistence } from "./modules/session
 // ==============================================================================
 
 process.on("unhandledRejection", (reason: any, promise: Promise<any>) => {
+  const errMsg = reason?.message || String(reason?.stack || reason || "");
+
+  // Abaikan dan tangani secara halus glitch koneksi background lavalink-client
+  if (
+    errMsg.includes("does not provide any /v4/info") ||
+    errMsg.includes("does not provide any /v3/info") ||
+    errMsg.includes("The node is not connected to the Lavalink Server") ||
+    errMsg.includes("The operation timed out") ||
+    errMsg.includes("Node-Heartbeat-Timeout") ||
+    errMsg.includes("Socket got terminated")
+  ) {
+    console.warn(`[LAVALINK SHIELD] ℹ️ Rekoneksi background ditangani: ${errMsg.split("\n")[0]}`);
+    return;
+  }
+
   console.error("[ANTI-CRASH] ⚠️ Unhandled Promise Rejection terdeteksi:");
   console.error("Promise:", promise);
   console.error("Reason:", reason?.stack || reason);
