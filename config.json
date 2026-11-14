@@ -43,7 +43,7 @@
       {
         "id": "Private-Lavalink",
         "host": "127.0.0.1",
-        "port": 2333,
+        "port": 5016,
         "authorization": "youshallnotpass",
         "secure": false,
         "retryAmount": 50,
